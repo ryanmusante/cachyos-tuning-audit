@@ -1,4 +1,4 @@
-# Deep-Research Prompt — ry-install Tuning (CachyOS · Beelink GTR9 Pro)
+#  cachyos-tuning-audit — ry-install Tuning (CachyOS · Beelink GTR9 Pro)
 
 Target: `ry-install.fish` **v7.75.1** (attached). Source of truth: script > README > CHANGELOG.
 
