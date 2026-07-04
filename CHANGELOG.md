@@ -3,6 +3,11 @@
 Notable changes to the CachyOS tuning profile for the Beelink GTR9 Pro. Newest first.
 Versions correspond to the `ry-install.fish` release that applies the profile.
 
+## [7.88.3] - 2026-07-03
+
+Changed
+- logging: hoist the JSONL ISO-8601 timestamp to `_RY_TS_FMT` (DRY refactor; no tuning-value or log-schema change)
+
 ## [7.88.2] - 2026-07-03
 
 Changed

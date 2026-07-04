@@ -5,7 +5,7 @@ A gaming- and LLM-oriented CachyOS desktop tuning profile for the Beelink GTR9 P
 and user configuration files spanning the kernel command line, package set, systemd
 services, network stack, GPU/CPU power, memory, storage, and an on-screen HUD.
 
-Corresponds to `ry-install.fish` **7.88.2**.
+Corresponds to `ry-install.fish` **7.88.3**.
 
 ## Hardware target
 
