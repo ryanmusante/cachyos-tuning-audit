@@ -1,25 +1,32 @@
 # CachyOS Tuning Profile — Beelink GTR9 Pro
 
-A gaming- and LLM-oriented CachyOS desktop tuning profile for the Beelink GTR9 Pro
-(Ryzen AI Max+ 395 "Strix Halo"), applied by `ry-install.fish`. It manages 17 system
-and user configuration files spanning the kernel command line, package set, systemd
-services, network stack, GPU/CPU power, memory, storage, and an on-screen HUD.
+[![profile](https://img.shields.io/badge/profile-7.91.0-1793d1?style=flat-square)](CHANGELOG.md)
+[![platform](https://img.shields.io/badge/platform-CachyOS-1793d1?style=flat-square)](#requirements)
+[![silicon](https://img.shields.io/badge/silicon-gfx1151%20%2F%20Strix%20Halo-1793d1?style=flat-square)](#hardware-target)
+[![kernel](https://img.shields.io/badge/kernel-%E2%89%A5%206.19-1793d1?style=flat-square)](#requirements)
 
-Corresponds to `ry-install.fish` **7.88.3**.
+> A gaming- and LLM-oriented CachyOS desktop tuning profile for the Beelink GTR9 Pro
+> (Ryzen AI Max+ 395 "Strix Halo"). It manages 17 system and user configuration files
+> spanning the kernel command line, package set, systemd services, network stack,
+> GPU/CPU power, memory, storage, and an on-screen HUD.
+
+Corresponds to `ry-install.fish` **7.91.0**.
 
 ## Hardware target
 
 Beelink GTR9 Pro — Ryzen AI Max+ 395 "Strix Halo" (Zen 5, 16C/32T, gfx1151) ·
-Radeon 8060S (40 RDNA 3.5 CUs) · XDNA 2 NPU · 128 GB LPDDR5X-8000 unified (≤96 GB as
+Radeon 8060S (40 RDNA 3.5 CUs) · XDNA 2 NPU · 128 GB LPDDR5X-8000 unified (≤ 96 GB as
 VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5.4 ·
 140 W TDP · CachyOS · systemd-boot.
 
 ## Requirements
 
-- **Kernel ≥ 6.19** (hard floor) — anchored to gfx1151 "MES-0x86" amdgpu stability plus
-  the RTL8127 suspend/shutdown-hang fix and r8169 support, all of which land at ≥ 6.19.
-- **CPU** matching `Ryzen AI Max` (install gate).
-- **Mesa ≥ 26.0** (soft warning below).
+| Requirement | Minimum |
+|---|---|
+| Platform | CachyOS · systemd-boot · ext4 root |
+| Kernel | ≥ 6.19 — gfx1151 amdgpu stability + RTL8127 suspend/shutdown-hang fix + r8169 |
+| CPU | matches `Ryzen AI Max` |
+| Mesa | ≥ 26.0 (soft warning below) |
 
 ## What it configures
 
@@ -30,7 +37,7 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
   `ipv6.disable=1`, `nowatchdog`, `zswap.enabled=0`, `8250.nr_uarts=0`, `quiet`;
   filesystem: `fsck.mode=force`, `fsck.repair=yes`.
 - **Packages** — 17 added, 9 removed, 10 masked units; RADV Vulkan stack
-  (vulkan-radeon + lib32-vulkan-radeon).
+  (`vulkan-radeon` + `lib32-vulkan-radeon`).
 - **Network** — IPv4-only nftables ruleset (default-deny inbound, established/related
   allowed, inbound ICMP echo accepted, remote-play ports gated); systemd-resolved with
   mDNS/LLMNR/DoT off; NetworkManager on wpa_supplicant; regulatory domain US.
@@ -40,9 +47,9 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
 - **Memory / storage** — BBR congestion control + `fq` qdisc; tuned sysctls
   (`vm.max_map_count=2147483642`, `vm.swappiness=150`, `vm.compaction_proactiveness=0`);
   ext4 mounted `noatime,lazytime,commit=10`; zswap off.
-- **HUD** — a readout-only MangoHud config (19 directives: fps/frametime, GPU/CPU
-  clocks, temps, and power, VRAM/RAM), toggled with `Shift_R+F12`, enabled via
-  `MANGOHUD=1`.
+- **HUD** — a readout-only MangoHud config (19 active directives: fps/frametime, GPU
+  clocks/temp/power, CPU clock/power/stats, VRAM/RAM; `cpu_temp` shipped commented),
+  toggled with `Shift_R+F12`, enabled via `MANGOHUD=1`.
 
 ## At a glance
 
@@ -55,7 +62,7 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
 ║ masked units        ║ 10    ║
 ║ sysctl values       ║ 9     ║
 ║ environment vars    ║ 11    ║
-║ MangoHud directives ║ 19    ║
+║ MangoHud directives ║ 19    ║  (active; +1 commented # cpu_temp)
 ║ managed files       ║ 17    ║  (15 system + 2 user)
 ```
 
@@ -75,13 +82,13 @@ hardware:
 
 ## Contents
 
-- `cachyos-tuning-audit.md` — full parameter-by-parameter tuning reference: every
-  managed value, the exact rendered configuration bodies, and the `ry-install --verify`
-  surface.
+- `cachyos-tuning-audit.md` — full parameter-by-parameter reference: every managed
+  value, the exact rendered configuration bodies, and the post-install `--verify`
+  checks.
 - `CHANGELOG.md` — version history.
 
 ## Usage
 
 The profile is applied by `ry-install.fish` on a CachyOS installation matching the
-hardware target above. Consult the tuning reference for the exact managed values and the
+hardware target above. Consult the reference for the exact managed values and the
 post-install `--verify` checks.
