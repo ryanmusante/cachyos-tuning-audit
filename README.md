@@ -1,6 +1,6 @@
 # CachyOS Tuning Profile — Beelink GTR9 Pro
 
-[![profile](https://img.shields.io/badge/profile-7.99.1-1793d1?style=flat-square)](CHANGELOG.md)
+[![profile](https://img.shields.io/badge/profile-7.101.0-1793d1?style=flat-square)](CHANGELOG.md)
 [![platform](https://img.shields.io/badge/platform-CachyOS-1793d1?style=flat-square)](#requirements)
 [![silicon](https://img.shields.io/badge/silicon-gfx1151%20%2F%20Strix%20Halo-1793d1?style=flat-square)](#hardware-target)
 [![kernel](https://img.shields.io/badge/kernel-%E2%89%A5%206.19-1793d1?style=flat-square)](#requirements)
@@ -10,7 +10,7 @@
 > spanning the kernel command line, package set, systemd services, network stack,
 > GPU/CPU power, memory, storage, and an on-screen HUD.
 
-Corresponds to `ry-install.fish` **7.99.1**.
+Corresponds to `ry-install.fish` **7.101.0**.
 
 ## Hardware target
 
@@ -24,34 +24,33 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
 | Requirement | Minimum |
 |---|---|
 | Platform | CachyOS · systemd-boot · ext4 root |
-| Kernel | ≥ 6.19 — gfx1151 MES-0x86 amdgpu; **unconditional** (no override; the RTL8127 r8169 + suspend-hang fixes land below the floor) |
+| Kernel | ≥ 6.19 — gfx1151 post-0x83 MES amdgpu; **unconditional** (no override; the RTL8127 r8169 + suspend-hang fixes land ≤ 6.18, below the floor) |
 | CPU | matches `Ryzen AI Max` (sole skip: `RY_INSTALL_SKIP_HARDWARE_CHECK=1`) |
 | Mesa | ≥ 26.0 (soft warning below; `vercmp` output validated) |
 
 ## What it configures
 
 - **Kernel command line (17 params)** — CPU/power: `amd_pstate=active`,
-  `processor.max_cstate=1`, `split_lock_detect=off`, `clearcpuid=umip` (renamed from
-  `514`; version-stable string form), `tsc=reliable`; I/O latency:
-  `pcie_aspm.policy=performance`, `nvme_core.default_ps_max_latency_us=0`,
-  `usbcore.autosuspend=-1`, `btusb.enable_autosuspend=n`; platform: `amd_iommu=off`,
-  `ipv6.disable=1`, `nowatchdog`, `zswap.enabled=0`, `8250.nr_uarts=0`, `quiet`;
-  filesystem: `fsck.mode=force`, `fsck.repair=yes`.
-- **Packages** — **19** added (now incl. `pacman-contrib` + `archlinux-contrib`),
-  9 removed, **12** masked units (now incl. `avahi-daemon` service + socket); RADV
-  Vulkan stack (`vulkan-radeon` + `lib32-vulkan-radeon`).
+  `processor.max_cstate=1`, `split_lock_detect=off`, `clearcpuid=umip` (version-stable
+  string form), `tsc=reliable`; I/O latency: `pcie_aspm.policy=performance`,
+  `nvme_core.default_ps_max_latency_us=0`, `usbcore.autosuspend=-1`,
+  `btusb.enable_autosuspend=n`; platform: `amd_iommu=off`, `ipv6.disable=1`,
+  `nowatchdog`, `zswap.enabled=0`, `8250.nr_uarts=0`, `quiet`; filesystem:
+  `fsck.mode=force`, `fsck.repair=yes`.
+- **Packages** — **18** added (incl. `pacman-contrib`), 9 removed, **12** masked units
+  (incl. `avahi-daemon` service + socket); RADV Vulkan stack (`vulkan-radeon` +
+  `lib32-vulkan-radeon`).
 - **Modules** — single merged `/etc/modprobe.d/60-ry-modules.conf`: MT7925 PCIe ASPM
   off + `amdxdna` blacklisted by default (the XDNA NPU probes `-EINVAL` under
   `amd_iommu=off`; opt-in via `BLACKLIST_AMDXDNA=false` + `amd_iommu=on iommu=pt`,
   validator-enforced).
 - **Network** — IPv4-only nftables ruleset (default-deny inbound, established/related
-  allowed, inbound ICMP echo accepted, remote-play ports gated), now `nft -c`
+  allowed, inbound ICMP echo accepted, remote-play ports gated), `nft -c`
   pre-validated before every deploy/reload; systemd-resolved with mDNS/LLMNR/DoT off;
   NetworkManager on wpa_supplicant; regulatory domain US.
 - **GPU / CPU power** — amd_pstate EPP `balance_performance` (hoisted, enum-gated)
   under the `powersave` governor (`dynamic_epp` disabled); GPU DPM level `auto`; udev
-  rules pinning EPP and GPU state (GPU matcher fixed to `ENV{DEVTYPE}` — the prior rule
-  never applied).
+  rules pinning EPP and GPU state (GPU matcher uses `ENV{DEVTYPE}`).
 - **Memory / storage** — BBR congestion control + `fq` qdisc; tuned sysctls
   (`vm.max_map_count=2147483642`, `vm.swappiness=150`, `vm.compaction_proactiveness=0`);
   ext4 mounted `noatime,lazytime,commit=10`; zswap off.
@@ -60,8 +59,8 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
   `MANGOHUD=1`.
 - **Safety rails** — all 4 boot-critical files get `.ry.bak` + post-write
   verify/restore; long package/boot operations are wall-clock-capped at a 7200 s floor
-  instead of exempt; NTP remediation is unconditional with a chronyd/ntpd conflict
-  guard.
+  instead of exempt; NTP remediation is unconditional with a chronyd/ntpd/openntpd
+  conflict guard.
 
 ## At a glance
 
@@ -69,7 +68,7 @@ VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5
 ║ AREA                ║ COUNT ║
 ║─────────────────────║───────║
 ║ kernel cmdline      ║ 17    ║
-║ packages added      ║ 19    ║
+║ packages added      ║ 18    ║
 ║ packages removed    ║ 9     ║
 ║ masked units        ║ 12    ║
 ║ sysctl values       ║ 9     ║

@@ -4,6 +4,29 @@ CachyOS tuning profile — Beelink GTR9 Pro
 Newest first. Versions correspond to the ry-install.fish release that
 applies the profile. Format: - subsystem: imperative summary.
 
+# 7.101.0 - 2026-07-12
+
+  - docs: condense reference prose (intro, preflight, BIOS, packages)
+    and trim verbose inline notes to vital rationale; no profile-value
+    change
+  - docs: bump version pins to 7.101.0
+
+# 7.100.0 - 2026-07-11
+
+  - kernel: re-anchor MES floor label to post-0x83 (0x83 reverted
+    upstream 2025-12-01); resolves the prior "MES-0x86" script-only
+    label conflict
+  - packages: drop archlinux-contrib (PKGS_ADD 19 -> 18; nothing in the
+    profile invoked it)
+  - sysctl: correct the netdev trailing comment 2.5GbE -> 10GbE
+    (RTL8127) to match the platform
+  - ntp: add openntpd.service to the NTP-client conflict guard scan
+    (now chronyd/ntpd/openntpd)
+  - verify: trim the stale "Vulkan packages" mention from the
+    runtime-session description
+  - docs: note the fallback-entry IPv6/IOMMU exposure window; cpu_temp
+    #1794 caveat; drop the pre-7.99 modprobe drop-in removal note
+
 # 7.99.1 - 2026-07-11
 
   - cmdline: rename clearcpuid 514 -> umip (version-stable string form;
