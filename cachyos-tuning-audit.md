@@ -88,6 +88,7 @@ Managed files = 17 (15 system + 2 user; `_RY_MANAGED_FILE_COUNT`), recomputed at
 ║    ║ split_lock, plaintext DNS) — quantify, no auto-FIX                   ║         ║
 ║ 19 ║ HUD floors current? MangoHud ≥0.8.4 (Steam-Overlay fix) · kernel     ║ §12     ║
 ║    ║ ≥6.14 · Mesa 24 — companion mangohud-gtr9-pro v1.17.0; HUD-scoped    ║         ║
+║    ║ floors only, do not conflate with §10 profile floors                 ║         ║
 ```
 
 ---

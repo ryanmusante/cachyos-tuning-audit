@@ -40,6 +40,23 @@ applies the profile. Format: - subsystem: imperative summary.
     clean; nftables B3 keeps the single annotated body (the
     RY_REMOTE_PLAY_PORTS=true block is comment-labelled in-fence)
 
+  Third pass (same date, same source v7.105.9 — re-certification
+  against the ry-install-main archive upload):
+
+  - audit: re-render all 17 generator outputs (both modprobe states,
+    both nftables port states) from the uploaded archive and
+    byte-compare against Appendix B — 19/19 match; version pins across
+    script header / VERSION / README badge / checkout / CHANGELOG,
+    4923 lines / 288 functions / fish --no-execute clean re-confirmed
+  - audit: verify document structure — both box matrices
+    column-aligned, 22 balanced fences, appendix lettering stable,
+    MangoHud v1.17.0 references consistent across header / P0 / §12 /
+    §14 / B9 / Sources; no corruption or conflict from the HUD
+    companion cross-integration
+  - p0: complete the #19 row — the trailing "HUD-scoped" now closes
+    with "floors only, do not conflate with §10 profile floors"
+    (mirrors the §12 statement)
+
 # 7.105.8 - 2026-07-14
 
   - kernel: swap pcie_aspm.policy=performance -> pcie_aspm=off; drop
