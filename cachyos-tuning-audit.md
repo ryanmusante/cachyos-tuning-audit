@@ -1,389 +1,379 @@
 # cachyos-tuning-audit — ry-install Tuning (CachyOS · Beelink GTR9 Pro)
 
-**Target:** `ry-install.fish` **v7.101.0** (attached, 2026-07-12).
-**Source of truth:** script > README > CHANGELOG. Every value below is re-derived from the script; where a prior prompt disagrees, the script wins and the disagreement is flagged.
+**Target:** `ry-install.fish` **v7.105.9** (attached, 2026-07-14; 4923 lines, 288 functions, `fish --no-execute` clean; script delta vs 7.105.8 = version string only, 2 lines).
+**Source of truth:** script > README > CHANGELOG. Every value below is re-derived from the v7.105.9 script; where any other source disagrees, the script wins and the disagreement must be flagged.
+**Platform:** Beelink GTR9 Pro · Ryzen AI Max+ 395 "Strix Halo" (Zen 5, 16C/32T, gfx1151) · Radeon 8060S (40 RDNA 3.5 CUs) · XDNA 2 NPU · 128 GB LPDDR5X-8000 unified (≤96 GB as VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5.4 · 140 W TDP (README BIOS ceiling 85 W) · CachyOS · systemd-boot.
+**Companion source:** `mangohud-gtr9-pro` **v1.17.0** (attached, 2026-07-04; MIT; MangoHud.conf + README + CHANGELOG) — standalone publication of the embedded HUD config; installer is source of truth (repo CHANGELOG 1.14.0). Cross-audited in §12 / B9; HUD-scoped floors in §12.
 
-**Platform:** Beelink GTR9 Pro · Ryzen AI Max+ 395 "Strix Halo" (Zen 5, 16C/32T, gfx1151) · Radeon 8060S (40 RDNA 3.5 CUs) · XDNA 2 NPU · 128 GB LPDDR5X-8000 unified (≤96 GB as VRAM) · dual M.2 NVMe (ext4) · dual 10 GbE (RTL8127) + Wi-Fi 7 (MT7925) + BT 5.4 · 140 W TDP · CachyOS · systemd-boot.
-
----
-
-## 0. Read first — audit target moved v7.99.1 → v7.101.0
-
-The prior revision of this document audited **v7.99.1**. The attached script is **v7.101.0**. Between the two releases the maintainer resolved nearly every open finding the v7.99.1 audit raised. This document is re-derived against v7.101.0 and the resolved items are marked **[CLOSED in-script]**; do not re-audit them.
-
-| # | v7.99.1 finding | Status in v7.101.0 | Evidence (script line) |
-|---|---|---|---|
-| 1 | **MES-0x86 label** — script-only, unreconciled; the audit's top item | **[CLOSED]** relabelled `post-0x83 MES`, with `0x83 reverted upstream 2025-12-01`; RTL8127 + suspend fixes explicitly `land <=6.18` | 15, 797, 809 |
-| 2 | `archlinux-contrib` — installed but never invoked (KEEP-vs-remove open) | **[CLOSED]** removed; `PKGS_ADD` 19 → **18** | 665, 733 |
-| 3 | SYSCTL trailing comment `netdev=2.5GbE` vs 10 GbE platform | **[CLOSED]** comment now `netdev=10GbE (RTL8127)` | 644 |
-| 4 | NTP conflict guard scans only chronyd/ntpd (`openntpd.service` gap) | **[CLOSED]** guard now scans all three incl. `openntpd.service` | 1706 |
-| 5 | `_verify_runtime_session` `--description` still says "Vulkan packages" | **[CLOSED]** description now `NM connection perms, installed-file perms, parent dirs` | 3280 |
-
-The remaining open items below are genuinely still open in v7.101.0 (chiefly the modprobe-leftover migration gap, §8, and the intentional trade-offs the profile makes by design).
-
-### Counts (all hard-asserted by `_ir_validate_counts`, 21 tripwires)
-
-KERNEL_PARAMS 17 · MKINITCPIO_HOOKS 11 · MKINITCPIO_MODULES 1 · LOGIND_IGNORE_KEYS 8 · ENV_VARS 11 · SYSCTL_VALUES 9 · **PKGS_ADD 18** · PKGS_DEL 9 · MASK 12 · EXPECTED_VULKAN_PKGS 2 · EXPECTED_SERVICES 5 · _RY_PKG_MANAGED_SERVICES 1 · _RY_POST_HOOKS 17 · _RY_ARGPARSE_SPEC 7 · _RY_BOOT_CRITICAL_DSTS 4 · _RY_PHASE_NAMES 6 · _RY_BACKUP_TARGETS 4 · _RY_TMPDIR_GLOBS 6 · SYSTEM_DESTINATIONS 15 · USER_DESTINATIONS 2 · MKINITCPIO_COMPRESSION_OPTIONS 2.
-
-Managed files = **17** (15 system + 2 user; `_RY_MANAGED_FILE_COUNT`), recomputed at load — a mismatch against the constant refuses (exit 3).
-
-### Hard floors
-
-- **KERNEL_MIN 6.19 — UNCONDITIONAL** (deploy and `--check` exit 3; `--verify` warns and continues). No bypass exists (`RY_INSTALL_SKIP_KERNEL_FLOOR_CHECK` removed v7.98.x). Rationale: **gfx1151 post-0x83 MES amdgpu** stability. The RTL8127 r8169 support (`f24f7b2f3af9`) and suspend/shutdown-hang fix (`ae1737e7339b`) are stated to land ≤6.18 (below the floor) and are therefore guaranteed, not floor rationale.
-- **CPU gate** `Ryzen AI Max` — override `RY_INSTALL_SKIP_HARDWARE_CHECK=1` (the sole skip env; fail-closed on unreadable model).
-- **Mesa < 26.0** — soft warn only; `vercmp` output validated `^-?\d+$` before the compare (garbage logs `MESA_SOFT_FLOOR_SKIP`).
-
-The **only** runtime env inputs to the script are `RY_RUN_TIMEOUT`, `RY_INSTALL_SKIP_HARDWARE_CHECK`, and `NO_COLOR`. Every profile toggle (`BLACKLIST_AMDXDNA`, `NM_WIFI_BACKEND`, `COUNTRY`, `GPU_DPM_LEVEL`, `EPP_PREFERENCE`, `RY_REMOTE_PLAY_PORTS`) is an embedded scalar set with unconditional `set -g` — an exported env var of the same name is clobbered. Opting in means editing the script, by design.
-
-### MangoHud posture (unchanged)
-
-19 active directives + 1 commented (`# cpu_temp intentionally disabled — enable if you want CPU temperature in the HUD`). Composition and order are byte-identical to v7.91.0; only the commented line's text differs from the bare `# cpu_temp` of older revisions. Prefix-greps still match; byte-exact checks must use the full string (§B9).
+Findings closed in-script at ≤7.101.0 are excluded; do not re-open them. The Protected list (§14) is the do-not-recommend inventory.
 
 ---
 
 ## Mission
 
-Evaluate every config decision against current upstream for this exact silicon and return a prioritized, evidence-backed tuning report. The profile deliberately trades PCI-passthrough, the XDNA NPU, power-saving, IPv6, and host inbound-firewalling-of-ping for performance, latency, and a simpler IPv4-only ruleset. Confirm each choice is current and correct, surface anything superseded or harmful, and quantify safety deltas without second-guessing intentional design.
+Deep-research brief: evaluate every configured value against current upstream for this exact silicon and return a prioritized, evidence-backed report targeting **gaming improvements, performance enhancements, and overall system speed gain**. The profile deliberately trades PCI passthrough, the XDNA NPU, power saving, PCIe ASPM, IPv6, and inbound-ping filtering for latency, throughput, and a simpler IPv4-only ruleset — confirm each trade is current and correct, surface anything superseded or harmful, and quantify safety deltas without second-guessing intentional design.
 
 ## Rules
 
 1. Item-by-item, hardware-anchored to gfx1151 / Zen 5 / RDNA 3.5 / CachyOS / 128 GB unified / dual 10 GbE.
-2. Respect deliberate trade-offs: **flag and quantify, do not auto-FIX.** Reserve FIX for incorrect, superseded, deprecated, or harmful values.
+2. Respect deliberate trade-offs: flag and quantify, do not auto-FIX. Reserve FIX for incorrect, superseded, deprecated, or harmful values.
 3. Rate IMPACT × RISK (High/Med/Low). Default KEEP when impact is marginal and risk is non-trivial.
 4. Never invent params, flags, keys, options, or URLs. Cite a source or mark UNCERTAIN.
-5. Flag every source conflict and name the trusted side. (No cross-source conflicts remain open in v7.101.0 — the MES label and the SYSCTL comment were both resolved in-script; see §0.)
-6. Give exact versions (kernel / Mesa / linux-firmware / pkg) and exact before→after, mapped to the in-script global.
+5. Flag every source conflict and name the trusted side.
+6. Give exact versions (kernel / Mesa / linux-firmware / vkd3d-proton / pkg) and exact before→after, mapped to the in-script global.
 
 ## Output
 
 - **Findings matrix** (box-drawn, code-fenced, grouped by section): ITEM · CURRENT · CALL (KEEP/TUNE/FIX/UNCERTAIN) · RECOMMENDED · IMPACT · RISK · EVIDENCE.
 - **Candidate-enhancement matrix** (§13, separate): ITEM · PRESENT?(no) · CALL (ADD-default/ADD-opt-in/KEEP-omitted) · IMPACT · RISK · EVIDENCE.
 - **Before→after** for each TUNE/FIX/ADD: exact current string, exact replacement, in-script global.
-- **VERIFY block** (post-reboot commands, below).
-- **Security delta vs CachyOS defaults** (ordered, below).
+- **VERIFY block** (post-reboot commands, §15).
+- **Security delta vs CachyOS defaults** (§11, ordered).
 - **Verdict:** one per section (OPTIMAL/TUNE/FIX) plus overall (PASS/PASS-WITH-FIXES/FAIL).
 - **ROBUSTNESS verdict** (§G–§L, separate from tuning).
 - **Methodology:** source list with access dates and versions; unknowns marked UNCERTAIN.
 
-### VERIFY block
+## Hard data (all counts asserted by `_ir_validate_counts`, 21 tripwires)
+
+KERNEL_PARAMS 17 · MKINITCPIO_HOOKS 11 · MKINITCPIO_MODULES 1 · LOGIND_IGNORE_KEYS 8 · **ENV_VARS 12** · **SYSCTL_VALUES 10** · PKGS_ADD 18 · PKGS_DEL 9 · MASK 12 · EXPECTED_VULKAN_PKGS 2 · EXPECTED_SERVICES 5 · _RY_PKG_MANAGED_SERVICES 1 · _RY_POST_HOOKS 17 · _RY_ARGPARSE_SPEC 7 · _RY_BOOT_CRITICAL_DSTS 4 · _RY_PHASE_NAMES 6 · _RY_BACKUP_TARGETS 4 · _RY_TMPDIR_GLOBS 6 · SYSTEM_DESTINATIONS 15 · USER_DESTINATIONS 2 · MKINITCPIO_COMPRESSION_OPTIONS 2.
+
+Managed files = 17 (15 system + 2 user; `_RY_MANAGED_FILE_COUNT`), recomputed at load; mismatch refuses (exit 3).
+
+**Gates (v7.105.9):**
+- **Kernel floor is ADVISORY ONLY** — comment at script line 15: `6.18.4 — RTL8127 r8169 + suspend-hang fix ae1737e7339b; gfx1151 fix is firmware (linux-firmware MES 0x86), not kernel`. The former hard-fail validator `_ir_validate_kernel_floor` and `KERNEL_MIN` are REMOVED (validators 4→3); deploy/`--check`/`--verify` run on any kernel. Do not describe any kernel gate as enforced.
+- **CPU gate** `Ryzen AI Max` — sole skip env `RY_INSTALL_SKIP_HARDWARE_CHECK=1`; fail-closed on unreadable model; `--verify` warns, deploy/`--check` exit 3.
+- **Mesa < 26.0** — soft warn only; `vercmp` output validated `^-?\d+$` before compare.
+- Preflight validators, in `_init_runtime` order: `_ir_validate_counts` → `_ir_validate_keys` → `_ir_validate_post_hooks` (3 total).
+- The only runtime env inputs are `RY_RUN_TIMEOUT`, `RY_INSTALL_SKIP_HARDWARE_CHECK`, `NO_COLOR`. Every profile toggle (`BLACKLIST_AMDXDNA`, `NM_WIFI_BACKEND`, `COUNTRY`, `GPU_DPM_LEVEL`, `EPP_PREFERENCE`, `RY_REMOTE_PLAY_PORTS`) is an embedded scalar set unconditionally (`set -g`) — an exported env var of the same name is clobbered; opting in means editing the script.
+
+---
+
+## P0. Research priority queue (search in this order)
+
+```
+║ #  ║ QUESTION (search anchors)                                            ║ SECTION ║
+║────║──────────────────────────────────────────────────────────────────────║─────────║
+║ 1  ║ pcie_aspm=off vs pcie_aspm.policy=performance semantics — does       ║ §5      ║
+║    ║ "off" leave BIOS-enabled links in L0s/L1 (kernel never touches       ║         ║
+║    ║ ASPM)? MT7925 + NVMe mitigation still effective? lspci LnkCtl        ║         ║
+║ 2  ║ VKD3D_CONFIG=descriptor_heap — current vkd3d-proton effect on        ║ §1      ║
+║    ║ RADV/RDNA3.5; default-enabled yet? global-force regressions          ║         ║
+║ 3  ║ vm.watermark_boost_factor=0 — reclaim/kcompactd spike removal on     ║ §3      ║
+║    ║ 128 GB unified; interaction with compaction_proactiveness=0          ║         ║
+║ 4  ║ PROTON_FSR4_RDNA3_UPGRADE=1 — Proton-CachyOS consumption, min        ║ §1      ║
+║    ║ version, DXIL_SPIRV_CONFIG=wmma_rdna3_workaround companion           ║         ║
+║ 5  ║ EPP balance_performance→performance / GPU_DPM auto→high under the    ║ §2      ║
+║    ║ 85 W ceiling — gfx1151 frametime/1%-low evidence only                ║         ║
+║ 6  ║ linux-firmware MES 0x86 (GC 11.5.1) — shipping revision contains     ║ §10     ║
+║    ║ the gfx1151 hang fix? min linux-firmware release; kernel-irrelevant  ║         ║
+║ 7  ║ ntsync vs fsync on 16C/32T — CONFIG_NTSYNC=y, /dev/ntsync,           ║ §1      ║
+║    ║ PROTON_NO_NTSYNC opt-out currency                                    ║         ║
+║ 8  ║ RTL8127 r8169 commits f24f7b2f3af9 + ae1737e7339b — exact mainline   ║ §10     ║
+║    ║ landing releases (advisory-floor legs)                               ║         ║
+║ 9  ║ netdev_budget 600/5000 + BBR/fq sizing for dual 10 GbE (RTL8127)     ║ §6      ║
+║ 10 ║ MT7925 mt76 upstream ASPM/coredump fix status — per-module option    ║ §6      ║
+║    ║ dropped 7.102.x; is global ASPM-off still required?                  ║         ║
+║ 11 ║ Modprobe-leftover gap now UNGUARDED — pre-7.99 stale drop-ins have   ║ §6/B10  ║
+║    ║ 0 in-script refs AND the README migration note is gone               ║         ║
+║ 12 ║ zstd -1 -T0 initramfs vs default-3 — boot decompress + ESP budget    ║ §7      ║
+║ 13 ║ Every-boot fsck.mode=force + commit=10 — boot cost vs durability     ║ §4/§5   ║
+║ 14 ║ swappiness=150 + CachyOS zram + zswap.enabled=0 coherence            ║ §3      ║
+║ 15 ║ cpu_temp dormant — reconcile #1794 (README: cpu_power→0 on Zen 5     ║ §12     ║
+║    ║ when active) vs repo v1.17.0 k10temp-pickup claim; fixed upstream?   ║         ║
+║ 16 ║ amdxdna -EINVAL (ret -22) under amd_iommu=off — errno current; any   ║ §10     ║
+║    ║ kernel making the NPU IOMMU-optional?                                ║         ║
+║ 17 ║ Candidate knobs (§13) — mitigations, ppfeaturemask, RADV_PERFTEST,   ║ §13     ║
+║    ║ read_ahead_kb: KEEP-omitted re-checks                                ║         ║
+║ 18 ║ Security-delta quantification (UMIP, AMD-Vi off, IPv6 off,           ║ §11     ║
+║    ║ split_lock, plaintext DNS) — quantify, no auto-FIX                   ║         ║
+║ 19 ║ HUD floors current? MangoHud ≥0.8.4 (Steam-Overlay fix) · kernel     ║ §12     ║
+║    ║ ≥6.14 · Mesa 24 — companion mangohud-gtr9-pro v1.17.0; HUD-scoped    ║         ║
+```
+
+---
+
+## §1. GPU · Vulkan · Proton runtime
+
+**ENV_VARS (12, `~/.config/environment.d/10-environment.conf`):** AMD_VULKAN_ICD=RADV · DXVK_LOG_LEVEL=none · DXVK_LOG_PATH=none · MANGOHUD=1 · MESA_SHADER_CACHE_MAX_SIZE=16G · PROTON_ENABLE_WAYLAND=1 · PROTON_FSR4_RDNA3_UPGRADE=1 · PROTON_LOCAL_SHADER_CACHE=1 · **VKD3D_CONFIG=descriptor_heap** · VKD3D_DEBUG=none · VKD3D_SHADER_DEBUG=none · WINEDEBUG=-all. No drirc (uma:1 native); no ttm/amdgpu module params; Vulkan stack via chwd (vulkan-radeon + lib32-vulkan-radeon).
+
+- **VKD3D_CONFIG=descriptor_heap (NEW 7.102.x, shipped globally):** confirm the option exists in current vkd3d-proton and its effect on RADV/RDNA 3.5 (mutable-descriptor path); determine whether current vkd3d-proton enables it by default (env then redundant → FIX-to-remove) or per-GPU; enumerate known per-title regressions from forcing it globally; check whether additional VKD3D_CONFIG flags are gaming-relevant defaults now. Unverifiable ⇒ UNCERTAIN, not FIX.
+- **PROTON_FSR4_RDNA3_UPGRADE=1:** confirm current Proton-CachyOS consumes it for FSR3.1→FSR4 on RDNA 3.5, the minimum Proton version, and the `DXIL_SPIRV_CONFIG=wmma_rdna3_workaround` companion status; no-op on non-FSR titles. Unverified ⇒ FIX-to-remove; verified ⇒ KEEP + cite.
+- **ntsync (assert-only, no autoload conf):** `_vre_ntsync`/`_ntsync_state` (builtin|loaded|loaded_nodev|missing). Confirm: ntsync vs fsync currency; CachyOS `CONFIG_NTSYNC=y` (node without autoload); `loaded_nodev` still a real failure; frametime benefit on 16C/32T; `PROTON_NO_NTSYNC=1` opt-out current.
+- **RADV heap:** confirm uma:1 on current Mesa (drirc removed by design).
+- **GTT:** kernel auto-sizes (~62 GiB); >62 GiB single allocations route to BIOS UMA carveout (≤96 GB), not deprecated `amdgpu.gttsize`; verify `/sys/module/ttm/parameters/pages_limit`. `amd_iommu=off` does not change the ceiling.
+- PROTON_ENABLE_WAYLAND maturity/fallback on current Proton; MESA_SHADER_CACHE_MAX_SIZE=16G sizing; MANGOHUD=1 overhead with gamescope/GameMode; AMD_VULKAN_ICD vs VK_DRIVER_FILES currency.
+- **XDNA NPU:** blacklisted by default (§10/§11) — zero gaming impact; LLM/NPU work needs the validator-paired opt-in.
+- Sources: github.com/HansKristian-Work/vkd3d-proton (env docs), docs.mesa3d.org (RADV, APU heap), gitlab.freedesktop.org/mesa + drm/amd, github CachyOS/proton-cachyos, amd.com ROCm, docs.kernel.org accel/amdxdna.
+
+## §2. CPU performance & power
+
+amd_pstate=active · governor **powersave** (`CPUPOWER_GOVERNOR`, cpupower-service.conf) · EPP **balance_performance** via udev (`EPP_PREFERENCE`, enum `_RY_EPP_LEVELS`) · `EXPECTED_SCALING_DRIVER=amd-pstate-epp` · `dynamic_epp=disabled` asserted · GPU_DPM_LEVEL=auto (enum `_RY_DPM_LEVELS`; add-only udev rule, `ENV{DEVTYPE}=="drm_minor"`) · prefcore + boost=1 asserted. Masked: power-profiles-daemon, ananicy-cpp, modemmanager.
+
+- **governor=powersave + EPP=balance_performance — special case, do not flag the governor.** Under amd_pstate=active, `powersave` honors EPP while `performance` pins max and ignores it; this triple is the documented EPP-honoring max-perf config on Zen 5. `balance_performance`→`performance` stays UNCERTAIN without gfx1151/Zen-5 frametime data; any change is the `EPP_PREFERENCE` global only.
+- **GPU_DPM_LEVEL=auto:** re-evaluate `auto` vs `high` for frametime/1%-lows under the shared package budget. Two inertia facts: the rule is add-only (no re-assert after GPU reset) and only began firing at the v7.94/95 matcher fix — pre-fix "high made no difference" observations are void. **Name the assumed budget in every power call (85 W README ceiling vs 140 W stock).**
+- Confirm EPP live-applies (`_post_udev`: `udevadm verify` ≥254, reload + retrigger cpu/block) and the GPU rule matches at enumeration; `dynamic_epp` node ≥6.16; prefcore/boost on Strix Halo; masks (ppd, ananicy-cpp, modemmanager) safe on current CachyOS.
+- `processor.max_cstate=1` (§5): idle power/thermal vs wake-latency/jitter; boost-headroom interaction; is `1` the right cap?
+- Sources: docs.kernel.org amd-pstate + kernel-parameters, wiki.archlinux.org/CPU_frequency_scaling + AMDGPU, freedesktop.org ppd.
+
+## §3. Memory & VM
+
+**SYSCTL_VALUES (10, `/etc/sysctl.d/95-ry-overrides.conf`, priority 95 after vendor 70-cachyos-settings.conf):** net.core.default_qdisc=fq · net.core.netdev_budget=600 · net.core.netdev_budget_usecs=5000 · net.ipv4.tcp_congestion_control=bbr · net.ipv4.tcp_notsent_lowat=16384 · net.ipv4.tcp_slow_start_after_idle=0 · vm.compaction_proactiveness=0 · vm.max_map_count=2147483642 · vm.swappiness=150 · **vm.watermark_boost_factor=0**. zswap.enabled=0 (cmdline). THP/KSM/oomd left to CachyOS; vm.page-cluster + vm.vfs_cache_pressure dropped as vendor duplicates.
+
+- **vm.watermark_boost_factor=0 (NEW 7.102.x):** confirm disabling watermark boosting removes post-fragmentation reclaim/kcompactd spikes (frametime consistency) on 128 GB unified; interaction with `compaction_proactiveness=0` (both suppress proactive compaction paths — coherent or redundant?); name the CachyOS vendor value it overrides (kernel default 15000).
+- **Vendor-duplicate drop a no-op?** Confirm 70-cachyos-settings.conf still ships page-cluster=0 + vfs_cache_pressure=50; a differing vendor default makes the drop a silent change.
+- **swappiness=150 + CachyOS zram + zswap=0:** gratuitous on 128 GB or LLM-reclaim-helpful; no double compression (zswap off before zram); zram advisory-only (not managed, not asserted).
+- vm.max_map_count (MAX_INT−5, SteamOS value) — Proton/anti-cheat sufficiency; compaction_proactiveness=0 for large unified allocs; oomd disabled on 128 GB.
+- Sources: docs.kernel.org admin-guide/sysctl/vm + mm, wiki.archlinux.org/Zram + Sysctl.
+
+## §4. Storage & filesystem
+
+NVMe scheduler `none` via udev (99- sorts after vendor 60-ioschedulers.rules); `nvme_core.default_ps_max_latency_us=0` (§5); fstab ext4 `noatime,lazytime,commit=10`; fstrim.timer enabled; zswap off.
+
+- NVMe `none` vs mq-deadline/kyber on this dual-NVMe box; `nr_requests`/`read_ahead_kb` unset — propose ATTRs only with game-load/LLM-read evidence, else defaults optimal; confirm CachyOS still defaults kyber and 99- ordering wins.
+- noatime+lazytime coexistence (lazytime residual value under noatime); **commit=10 durability vs every-boot forced fsck (§5)** — quantify the boot cost of fsck.mode=force on ext4 NVMe and whether commit=10 + forced fsck is coherent or belt-and-braces; fstrim.timer vs continuous discard.
+- fstab rewrite invariants: Appendix D.
+- Sources: docs.kernel.org block + ext4, wiki.archlinux.org/SSD + Ext4 + fsck.
+
+## §5. Kernel cmdline (17 tokens — latency set)
+
+```
+8250.nr_uarts=0 amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 nowatchdog nvme_core.default_ps_max_latency_us=0 pcie_aspm=off processor.max_cstate=1 quiet split_lock_detect=off tsc=reliable usbcore.autosuspend=-1 zswap.enabled=0
+```
+
+- **`pcie_aspm=off` (CHANGED 7.102.x from `pcie_aspm.policy=performance`) — top cmdline item.** Semantics differ: `off` disables the kernel ASPM driver entirely and inherits whatever link states firmware programmed; `policy=performance` actively selects the performance policy. Research: (a) does `off` leave any BIOS-enabled link in L0s/L1 on this board (audit every `lspci -vv` LnkCtl); (b) is the MT7925 mitigation (coredump/BT-reconnect/assoc) still effective via global off now that the per-module `mt7925e disable_aspm=1` option is dropped; (c) NVMe latency claim under off vs policy=performance; (d) whether `pcie_port_pm=off` is additionally needed or redundant. README rationale (byte-exact, 7.105.9): "(MT7925 coredump / BT-reconnect / assoc fix + NVMe latency); drop to restore ASPM defaults."
+- **`clearcpuid=umip`:** UMIP off, kernel tainted; string form version-stable. Confirm `umip` name accepted on current kernels; README drop-condition: no `umip_printk` stutter. Asserted generically (`_vrk_cmdline`), no UMIP-specific check.
+- **`amd_iommu=off`:** validator-paired to `BLACKLIST_AMDXDNA` (§11). ROCm unaffected on gfx1151; NPU is the named casualty. Weigh marginal latency vs DMA-isolation loss vs NPU loss.
+- **`ipv6.disable=1`:** hard-coupled to the IPv4-only nftables ruleset (`_ir_validate_keys`). LAN impact, Steam/Proton netcode fallback behavior, README dual-stack opt-out.
+- **processor.max_cstate=1:** §2. **btusb.enable_autosuspend=n:** MT7925/BT reconnect fix; overlap with usbcore.autosuspend=-1. **fsck.mode=force + fsck.repair=yes:** §4 boot-cost + auto-repair safety + hook handshake. **amd_pstate=active / split_lock_detect=off / tsc=reliable / nowatchdog / 8250.nr_uarts=0 / usbcore.autosuspend=-1 / nvme_core ps_max_latency=0 / zswap.enabled=0:** validate each is current, non-deprecated, and correct for this silicon.
+- No `preempt=` — KEEP-omitted (CachyOS boots full; `_vrk_cmdline` INFOs the model). Zero amdgpu/ttm params — hands-off (`_vrkm_amdgpu` no-ops without `amdgpu.*`).
+- Input hygiene: tokens charset-gated `^[A-Za-z0-9._,=-]+$`; a new token outside it must also change the validator.
+- Sources: docs.kernel.org kernel-parameters + PCIe/ASPM + amd-pstate + UMIP + IOMMU + ipv6-sysctl, wiki.archlinux.org/AMDGPU + IOMMU + fsck + Power_management.
+
+## §6. Network & latency
+
+Net sysctls §3; IPv6 off §5; nftables §11. NM: wifi.backend=wpa_supplicant, wifi.powersave=2 (off — MT7925/mt76 software PS causes latency spikes), logging WARN, dispatcher LogLevelMax=notice. resolved: MulticastDNS=no, LLMNR=no, DNSOverTLS=no, DNSSEC=allow-downgrade (plaintext; diverges from CachyOS DoH). regdom US. Masked: NetworkManager-wait-online, modemmanager, avahi-daemon.service + .socket. Enabled: NetworkManager.
+**Modprobe managed file (`60-ry-modules.conf`, CHANGED 7.102.x):** amdxdna blacklist only (default); `BLACKLIST_AMDXDNA=false` renders a comment-only file (validator `_grep_modprobe_entry` accepts comment-only). The `options mt7925e disable_aspm=1` line is REMOVED — coverage moved to `pcie_aspm=off`.
+
+- **⚠ OPEN GAP — modprobe-leftover migration now UNGUARDED (Low/Low → re-rate).** Superseded `60-ry-mt7925e.conf` / `60-ry-blacklist-amdxdna.conf` have zero in-script references, `_vrkm_blacklist_modprobe` is generator-sourced (checks intended content, not on-disk extras), and the v7.105.9 README (unchanged from 7.105.8 here) no longer carries the one-time `sudo rm` migration note — guard count is now zero. A stale `60-ry-blacklist-amdxdna.conf` keeps the NPU blacklisted after opt-in, invisible to every verify path. A stale `60-ry-mt7925e.conf` is benign-redundant under `pcie_aspm=off` (INFO). ADD-check candidate; verify-side stale-file scan of `/etc/modprobe.d/60-ry-*` against SYSTEM_DESTINATIONS.
+- **MT7925 upstream status:** has the mt76 ASPM/coredump fix landed such that neither global ASPM-off nor a per-module option is required? Cite commit + release; if landed, the `pcie_aspm=off` rationale loses its Wi-Fi leg and rests on NVMe latency alone.
+- **netdev_budget=600/netdev_budget_usecs=5000 on dual 10 GbE:** confirm sizing for RTL8127 line rate or propose values with driver evidence; tcp_rmem/wmem/ring defaults sufficiency.
+- bbr+fq currency (BBRv3 status in mainline/CachyOS); wifi.powersave=2 still correct for mt76; wpa_supplicant vs iwd parity (iwd opt-in intact; residual verify coverage = backend compare only — deliberate, Low/Low).
+- **avahi masked (unit+socket):** confirm no host dependency (printer/`.local` discovery) and no D-Bus resurrection path; with resolved MulticastDNS=no, multicast discovery is fully closed.
+- regdom US: MT7925 TX-power/channel on current wireless-regdb; 6 GHz AFC status; non-US requires hand-edit.
+- Same-basename replace caution (B5/B6): if CachyOS ships its own `99-cachyos-resolved.conf`/`99-cachyos-nm.conf`, deploy REPLACES them — confirm intended, not a vendor-update clash.
+- Sources: docs.kernel.org networking, git.kernel.org mt76 + wireless-regdb + r8169, wiki.archlinux.org NetworkManager + Wireless + Sysctl, man.archlinux.org avahi-daemon.
+
+## §7. Boot chain & initramfs
+
+loader.conf: default @saved, timeout 0, console-mode keep, editor no. sdboot-manage: DEFAULT_ENTRY manual, OVERWRITE/REMOVE_EXISTING/REMOVE_OBSOLETE yes, LINUX_FALLBACK_OPTIONS "quiet". mkinitcpio: MODULES=(amdgpu), HOOKS(11)= base systemd autodetect microcode modconf kms keyboard sd-vconsole block filesystems fsck, COMPRESSION zstd, COMPRESSION_OPTIONS=(-1 -T0), explicit BINARIES=()/FILES=(). Pre-deployed Phase 2 → one rebuild at `-Syu`.
+
+- HOOKS order (systemd/microcode/kms/sd-vconsole/block) current-correct; amdgpu early-KMS; fsck-hook handshake with `fsck.mode=force` (no boot prompt).
+- **zstd -1 -T0:** quantify boot decompress vs default-3 (sub-100 ms class on NVMe) and image size vs ESP budget (`BOOT_SPACE_CRIT/WARN` 200/500 MB) with multiple kernels + fallback. TUNE to default-3 only if size threatens the budget; tokens are charset-gated + count-asserted — any TUNE updates both.
+- Live drift caught: `_vsb_mkinitcpio` compares live `COMPRESSION=`/`COMPRESSION_OPTIONS` (multi-line join, last-wins warn) — confirm last-wins matches shell sourcing.
+- timeout 0 + manual + REMOVE_EXISTING=yes wipes foreign BLS entries (EFI-resident loaders untouched); recovery path = live-USB → chroot; sdboot-manage currency vs kernel-install/UKI (UKI out of scope).
+- **Fallback-entry exposure:** `LINUX_FALLBACK_OPTIONS="quiet"` strips all params — fallback boots kernel-default IOMMU (AMD-Vi ON) + IPv6 ENABLED under the IPv4-only ruleset; the modprobe amdxdna blacklist REMAINS active (asymmetry). Confirm the exposure window is accepted or flag it.
+- Sources: wiki.archlinux.org Mkinitcpio + systemd-boot, sdboot-manage upstream.
+
+## §8. Packages
+
+**PKGS_ADD (18):** nvme-cli, cachyos-gaming-meta, cachyos-gaming-applications, lib32-mesa, mkinitcpio-firmware, fd, sd, dust, procs, bottom, htop, git-delta, lm_sensors, rtkit, realtime-privileges, ddcutil, nftables, pacman-contrib (supplies pactree `PACTREE_TIMEOUT_S=60` + paccache -rk2/-ruk0).
+**PKGS_DEL (9, `-Rns`, rdep-aware via pactree):** plymouth, cachyos-plymouth-bootanimation, cachyos-plymouth-theme, breeze-plymouth, plymouth-kcm, micro, cachyos-micro-settings, cachy-update, kdeconnect. **AUR:** none. **Vulkan (chwd, verify-only):** vulkan-radeon, lib32-vulkan-radeon.
+
+- Confirm the gaming metas supply RADV/Proton/gamescope/MangoHud/GameMode; **GameMode omission — KEEP** (governor/EPP/DPM pinned profile-wide); confirm the meta's MangoHud does not clash with the shipped conf.
+- `-D --asexplicit` post-`Syu` re-mark = orphan protection for PKGS_ADD members that pre-existed as dependencies (idempotent; failure warns).
+- rtkit + realtime-privileges for PipeWire priority (rtkit-daemon socket-activated); lib32-mesa still needed beside lib32-vulkan-radeon; PKGS_DEL fallout tracked (`_RY_PKG_REMOVE_SKIPS`).
+- Advisory: znver/x86-64-v4 (AVX-512) repo benefit over v3 for this build.
+- Sources: wiki.cachyos.org, wiki.archlinux.org Gaming + PipeWire + RealtimeKit, archlinux.org/packages.
+
+## §9. systemd units & time-sync
+
+**Mask (12):** ananicy-cpp, power-profiles-daemon, NetworkManager-wait-online, ufw, modemmanager, avahi-daemon.service + .socket, sleep/suspend/hibernate/hybrid-sleep/suspend-then-hibernate targets. **Enable (5):** fstrim.timer, NetworkManager, cpupower, nftables, bluetooth. **Untouched:** oomd (intentional), NetworkManager-dispatcher + rtkit-daemon (socket-activated), iwd; ufw flushed after nftables live.
+**NTP unconditional:** `_ry_check_time_sync` scans chronyd/ntpd/openntpd; refuses to enable timesyncd if any is active; else enables timesyncd, re-checks after 2 s, runs `_ry_rtc_writeback` (`--systohc --utc`; RTCInLocalTZ defer branch) on sync. Escape = mask timesyncd (no opt-out env, by design).
+
+- Each mask safe on current CachyOS: ananicy-cpp + ppd (§2); modemmanager (no cellular); avahi (§6); sleep targets = no suspend (always-on mini-PC).
+- nftables-first-then-ufw-flush leaves no unfirewalled window (mask skipped if nft not live); oneshot judged by live ruleset; `nft -c`-gated at deploy + `_post_nft`.
+- fstrim.timer vs continuous discard; cpupower service vs CachyOS freq management; logind Handle*Key=ignore (8 keys incl. LongPress) — no lockout.
+- RTC write-back safety; no ownership conflict with timesyncd.
+- Sources: man.archlinux.org systemd.unit + logind.conf + hwclock + timesyncd, wiki.archlinux.org Bluetooth + System_time.
+
+## §10. Version floors, firmware & known issues
+
+**Advisory floor 6.18.4 (comment-only, NOT enforced; validator + KERNEL_MIN removed 7.105.x).** Legs: RTL8127 r8169 support `f24f7b2f3af9` + suspend/shutdown-hang fix `ae1737e7339b`. **gfx1151 GPU-hang fix re-anchored to firmware: linux-firmware MES 0x86 (GC 11.5.1), not kernel.**
+
+- **Verify both advisory legs:** cite the exact mainline releases for `f24f7b2f3af9` and `ae1737e7339b`; consequence of error is doc-only (floor unenforced) but the regression baseline must be accurate.
+- **Verify the firmware anchor:** shipping linux-firmware contains the MES 0x86 (or later) GC 11.5.1 revision with the hang fix; name the minimum linux-firmware release; confirm kernel version is genuinely irrelevant to the fix (prior audit generations bounced between kernel-6.19/post-0x83/0x86 labels — settle it with git.kernel.org/kernel-firmware evidence, ROCm #5724, Launchpad #2129150).
+- **Floor-removal posture:** deploy now runs on any kernel — confirm acceptable given both legs are hardware-enablement (RTL8127) rather than safety; no bypass env exists to misuse.
+- **MT7925:** §6 upstream-fix status; 6.17+ panic/deauth fixes assumed present on any current CachyOS kernel.
+- **amdxdna:** `-EINVAL (ret -22)` probe failure under `amd_iommu=off` — errno still current; watch for a kernel making the NPU IOMMU-optional (obsoletes the blacklist).
+- **Strix Halo ACP:** internal-mic ASoC/UCM still open upstream as of mid-2026; nothing to ship; upstream report is the only action.
+- Mesa soft floor 26.0 vs current RADV guidance; enumerate open gfx1151 RADV issues.
+- Prefer kernel/firmware floors over DKMS for any landed fix.
+- Sources: git.kernel.org linux-firmware + r8169 + mt76, gitlab.freedesktop.org/drm/amd + mesa, bugzilla.kernel.org, discuss.cachyos.org, docs.kernel.org accel/amdxdna, wiki.cachyos.org.
+
+## §11. Security & safety deltas (quantify, ordered — no auto-FIX)
+
+nftables IPv4-only default-deny-inbound (ufw masked; ipv6.disable=1): policy drop; lo accept; ct established/related accept; ct invalid drop; IPv4 ICMP {echo-request, destination-unreachable, time-exceeded, parameter-problem} accept (inbound ping ALLOWED); forward drop; output accept; no ICMPv6/NDP. `RY_REMOTE_PLAY_PORTS` (default false) appends TCP {47984,47989,48010,27036,27037} + UDP {47998-48010,27031-27036}. Rendered ruleset passes `nft -c -f` before commit; `_post_nft` re-validates before reload; restart failure downgrades to applies-at-boot (warned).
+
+1. **UMIP off** (`clearcpuid=umip`) — descriptor-table base leak, kernel tainted; headline open reduction.
+2. **AMD-Vi fully disabled** (`amd_iommu=off`) — no DMA isolation/remapping (USB4/TB, NVMe, NIC DMA unmediated). Named casualty: XDNA 2 NPU blacklisted. Opt-back-in is one validator pair (`BLACKLIST_AMDXDNA=false` + `amd_iommu=on iommu=pt`) restoring isolation and NPU together; coupling asymmetry intended (`amd_iommu=on` + blacklist-true valid; false-without-IOMMU refuses).
+3. **IPv6 disabled + inbound IPv4 ping accepted** — net LAN delta = +ping −mDNS (avahi masked unit+socket + resolved MulticastDNS=no close multicast discovery entirely). `_vss_nft` hard-fails on missing echo-request (regression guard); `_vrsv_nft_assert_ping` warns live; do NOT flag ping-accept as a regression.
+4. **split_lock_detect=off** — a misbehaving app can degrade the system.
+5. **Plaintext DNS** (DNSOverTLS=no, DNSSEC=allow-downgrade; reverts CachyOS DoH) — observable/spoofable on-path.
+6. **Remote-play ports** (default OFF) — validate the TCP/UDP sets against current Sunshine/Moonlight/Steam docs; default-OFF correct.
+7. **Default-deny-inbound ships** — net positive; `flush ruleset` blast radius vs docker/libvirt/podman; no ICMP/new-conn rate limit (trusted-LAN assumption — state it).
+
+## §12. HUD & Bluetooth
+
+**MangoHud.conf (19 active + 1 commented, 0600):** horizontal · legacy_layout=0 · position=top-left · toggle_hud=Shift_R+F12 · fps · frametime · frame_timing · gpu_stats · gpu_temp · gpu_core_clock · gpu_power · cpu_stats · `# cpu_temp intentionally disabled — enable if you want CPU temperature in the HUD` · cpu_mhz · cpu_power · vram · ram · font_size=20 · text_outline · background_alpha=0.4. Enabled via MANGOHUD=1.
+**bluetooth main.conf:** FastConnectable=true · AutoEnable=true · ReconnectAttempts=3.
+**Companion parity (measured, v1.17.0 ↔ generator script L925-948):** 19/19 active directives identical in set AND order; byte delta = 2 comment lines only (repo identity header vs installer managed-file header; bare `# cpu_temp` vs installer's expanded comment) — functionally nil, comments are inert to MangoHud. Repo policy: installer is source of truth (repo CHANGELOG 1.14.0 realignment). **HUD-scoped floors per repo:** MangoHud ≥ 0.8.4 (Steam-Overlay fix), kernel ≥ 6.14, Mesa 24+ — HUD floors only, do not conflate with profile floors (§10).
+
+- **cpu_power live target:** confirm it populates from Zen 5 RAPL/hwmon under Wayland; blank/zero ⇒ FIX-to-investigate. **cpu_temp stays dormant — reconcile three records:** installer README (#1794: cpu_power reads 0 on Zen 5 while cpu_temp active), repo README v1.17.0 (k10temp Tctl present but MangoHud pickup unreliable depending on kernel/hwmon layout), repo CHANGELOG 1.15.0 ("CPU package sensor is not reported on the GTR9 Pro"). Settle the current failure mode on MangoHud ≥ 0.8.4 / kernel 6.18.x; if #1794 is fixed AND k10temp is picked up, cpu_temp exits dormancy into CPU-block slot 2 (load, temp, freq, power — repo 1.17.0 layout).
+- Byte-exact checks must use the full commented string; `grep -c '^# cpu_temp'` = 1, `grep -c '^cpu_temp'` = 0, `grep -c '^cpu_power'` = 1.
+- Confirm all 19 directives valid on current MangoHud; gpu_temp/gpu_core_clock/vram/cpu_mhz populate from amdgpu under Wayland; overhead near-zero with gamescope. `vram` on this UMA part reports the BIOS carveout only — `ram` is the load-bearing figure (§14 special case); a low `vram` reading is not a finding.
+- BlueZ keys current; ReconnectAttempts=3 + backoff sane; AutoEnable fixes adapter-off-at-boot; complements btusb.enable_autosuspend=n.
+- Sources: github flightlessmango/MangoHud (#1794, #1825), wiki.archlinux.org MangoHud + Bluetooth, mangohud-gtr9-pro v1.17.0 archive (README + CHANGELOG — lockstep policy, floors, directive history).
+
+## §13. Candidate enhancements (absent knobs — gaming-first)
+
+Knobs the profile does NOT set. Anchor every call to gfx1151 / Zen 5 / RDNA 3.5 / current Mesa + Proton-CachyOS. Reserve ADD-as-default for a clear, low-risk frametime/throughput win; never invent a flag; bias KEEP-omitted — the profile is intentionally lean.
+
+**13a. Kernel cmdline**
+- `mitigations=off` — KEEP-omitted. Zen 5 unaffected by Inception/SRSO-class issues at hardware/microcode level; no measured gaming benefit. Re-open as ADD-opt-in only on a published gfx1151 Proton frametime delta > ~2%. IMPACT Low · RISK Med.
+- `amdgpu.ppfeaturemask=0xffffffff` — KEEP-omitted. Undervolt/OC unimplemented on gfx1151 (overdrive/power-cap unsupported, ROCm #5750); CPU undervolt via ryzenadj is the real lever (out of scope). IMPACT Low · RISK Med.
+- `preempt=full` — KEEP-omitted, redundant (CachyOS boots full; CONFIG_PREEMPT_DYNAMIC=y).
+- `nvme_core.io_timeout` / `pcie_port_pm=off` — KEEP-omitted unless §5 ASPM research shows `pcie_aspm=off` leaves port PM active in a way that matters; else redundant beside ps_max_latency=0.
+
+**13b. RADV / Mesa env**
+- `RADV_PERFTEST` — KEEP-omitted (gpl default-on since 23.1; sam auto-on when all VRAM CPU-visible) / UNCERTAIN (nggc — no gfx1151 benchmark).
+- `RADV_DEBUG` correctness toggles — KEEP-omitted unless a live gfx1151 rendering bug requires one.
+- `MESA_VK_WSI_PRESENT_MODE` / `vblank_mode` / `mesa_glthread=true` — KEEP-omitted (per-game / GL-only).
+
+**13c. DXVK / VKD3D-Proton**
+- dxvk.conf — KEEP-omitted (GPL default-on; numCompilerThreads auto). Legacy DXVK_ASYNC superseded (gplAsyncCache removed in DXVK 2.7) — never recommend the old async patch.
+- Additional `VKD3D_CONFIG` flags beyond the shipped `descriptor_heap` — evaluate per §1; per-game flags stay per-game.
+- Upscaler envs beyond §1 — KEEP-omitted (`PROTON_FSR4_RDNA3_UPGRADE=1` + per-title DXIL workaround is the shipped scope).
+
+**13d. Firmware / platform (verify-only)**
+- Resizable BAR / SAM — verify-only, auto-on (all VRAM CPU-visible; RADV auto-enables sam). Optional INFO via rocminfo / lspci BAR.
+- BIOS UMA carveout vs GTT — KEEP-omitted for gaming (GTT ~62 GiB never bottlenecks a game; carveout is compute-oriented).
+- BIOS power ceiling — verify-only: README prescribes flat SPL=fPPT=sPPT=85 W + TjMax 90 (gains flatten past ~85 W; STAPM zeroed). Installer-external; the only action is consistency — every §2/§13 power statement names its assumed budget.
+
+**13e. Scheduler / memory**
+- `read_ahead_kb` / `nr_requests` — KEEP-omitted, defaults optimal absent evidence (§4).
+- `vm.max_map_count` — KEEP (sufficient; SteamOS value).
+- CPU isolation (`isolcpus`, `nohz_full`, `rcu_nocbs`) — KEEP-omitted (hurts a 16C/32T gaming desktop).
+
+## §14. Scope, protected items, special cases
+
+**Scope:** recommendations only — do not emit a modified script. Out of scope: dotfiles, shells, editors, secrets, backups, multi-user, non-CachyOS, laptops, UKI, BIOS flashing (README link-out only). Per-game Proton tuning secondary to system-wide config.
+
+**Protected (deliberately removed/disabled — do not recommend reinstating unless current upstream directly contradicts the rationale; then flag, not FIX):**
+- `pcie_aspm.policy=performance` (superseded 7.102.x by `pcie_aspm=off` — evaluate the semantics in §5, do not blind-revert).
+- `mt7925e disable_aspm=1` module option / standalone `60-ry-mt7925e.conf` (removed 7.102.x — covered by global ASPM-off).
+- `KERNEL_MIN` + `_ir_validate_kernel_floor` hard floor (removed 7.105.x — do not recommend re-enforcement; advisory comment is the mechanism).
+- `RY_INSTALL_SKIP_KERNEL_FLOOR_CHECK` (removed 7.98.x) · `RY_NO_NTP_REMEDIATION` (removed 7.96/97 — escape is masking timesyncd) · `clearcpuid=514` numeric form (renamed 7.94/95) · `archlinux-contrib` (removed 7.101.0) · `60-ry-blacklist-amdxdna.conf` standalone (merged 7.99.0).
+- `amdgpu.ppfeaturemask`, `--country` flag, TTM/GTT cap, RADV drirc, MangoHud repo-history removals — `fps_metrics` (added 1.10.0, dropped 1.13.0), `gpu_junction_temp` (hotspot mirrors the edge value), `throttling_status`(+`_graph`) (removed twice), `gpu_mem_clock` + `swap` (meaningless on a shared-memory APU) — do not re-propose without new evidence, `vm.page-cluster`/`vm.vfs_cache_pressure` (vendor-provided), ntsync autoload conf (assert-only), baloofilerc, `_kb_*` subs + `_ry_check_umip_disabled`, ICMPv6/NDP rules (do NOT re-add without restoring IPv6), the linux-firmware version advisory.
+
+**Live config to evaluate KEEP-or-FIX-to-remove (not protected):** `VKD3D_CONFIG=descriptor_heap`, `PROTON_FSR4_RDNA3_UPGRADE`, `vm.watermark_boost_factor=0`, MangoHud gpu_power/text_outline/toggle_hud/cpu_power, `ipv6.disable=1`, inbound-ping accept, `BLACKLIST_AMDXDNA=true` default (evaluate the NPU-off default, not the mechanism). `cpu_temp` stays a user opt-in.
+
+**Special cases:**
+- **IOMMU:** ships `amd_iommu=off`. Do NOT recommend `iommu=pt`/`amd_iommu=on` as default unless ROCm on gfx1151 provably requires it (it does not) OR a DMA-isolation requirement is established; opt-in is per-user and validator-enforced.
+- **PCIe ASPM:** ships `pcie_aspm=off`. Do NOT flag the change from policy=performance as a regression without link-state evidence (§5, question a); if `off` leaves links ASPM-enabled on this board, that is a FIX with lspci proof.
+- **IPv6/nftables:** ships `ipv6.disable=1` + IPv4-only ruleset accepting inbound ping. Do NOT flag ping-accept (asserted regression guard); do NOT re-add ICMPv6/NDP without restoring IPv6.
+- **Governor/EPP:** powersave + balance_performance is the EPP-honoring config under amd_pstate=active — do not flag powersave without proving `performance` would honor the hint.
+- **GPU_DPM_LEVEL:** `auto` is deliberate; flag only with gfx1151 frametime/1%-low evidence for `high` under the named budget; pre-v7.94/95 observations are void.
+- **HUD `vram` on UMA:** reports only the BIOS carveout, never the 128 GB pool — do NOT flag a low `vram` reading as misconfiguration; `ram` carries the shared-pool load (§12, companion repo).
+
+## §15. VERIFY block (post-reboot)
 
 ```fish
 cat /proc/cmdline
-cat /sys/.../cpu0/cpufreq/scaling_driver                    # amd-pstate-epp (EXPECTED_SCALING_DRIVER)
-cat /sys/.../cpu0/cpufreq/scaling_governor                  # powersave (EPP-honoring under pstate=active)
-cat /sys/.../cpu0/cpufreq/energy_performance_preference     # balance_performance (EPP_PREFERENCE)
-cat /sys/.../amd_pstate/status                              # active
-cat /sys/.../amd_pstate/dynamic_epp                         # disabled (else EPP pin -EBUSY; absent pre-6.16)
-cat /sys/.../amd_pstate/prefcore                            # enabled
-cat /sys/.../cpufreq/boost                                  # 1
-cat /sys/.../clocksource0/current_clocksource               # tsc — INFORMATIONAL ONLY (no _vrk_clocksource since v7.90.0)
-cat /sys/block/nvme0n1/queue/scheduler                      # [none] (adjust node)
-cat /sys/class/drm/card*/device/power_dpm_force_performance_level   # auto (GPU_DPM_LEVEL; udev rule LIVE only since the v7.94/95 ENV{DEVTYPE} fix)
-find /sys/kernel/iommu_groups -mindepth 1 -maxdepth 1 -type d | wc -l   # 0 — INFORMATIONAL ONLY (no _vrkm_iommu since v7.90.0)
-cat /proc/cmdline | rg -o 'amd_iommu=\S+'                   # amd_iommu=off
-cat /proc/cmdline | rg -o 'ipv6\.disable=\S+'               # ipv6.disable=1
-cat /proc/cmdline | rg -o 'clearcpuid=\S+'                  # clearcpuid=umip
-cat /proc/cmdline | rg -o 'processor.max_cstate=\S+'        # 1
-cat /proc/cmdline | rg -o 'fsck\S+'                         # fsck.mode=force fsck.repair=yes
-ls -l /dev/ntsync                                           # present (assert-only)
-lsmod | rg -c '^amdxdna'                                    # 0 (blacklisted; loaded = verify FAIL, _vrkm_blacklist_modprobe)
-sudo dmesg | rg -i 'AMD-Vi|DMAR'                            # expect NO "AMD-Vi: Enabled" (amd_iommu=off)
-ip -6 addr                                                  # expect no IPv6 addresses (ipv6.disable=1)
-cat /etc/modprobe.d/60-ry-modules.conf                      # options mt7925e disable_aspm=1 + blacklist amdxdna (merged, v7.99.0)
-ls /etc/modprobe.d/60-ry-mt7925e.conf /etc/modprobe.d/60-ry-blacklist-amdxdna.conf 2>/dev/null   # ENOENT both (pre-7.99 leftovers — remove once, README note)
-pacman -Q linux-firmware                                    # currency check only (no version gate)
-pacman -Q pacman-contrib                                    # present (PKGS_ADD 18)
-vulkaninfo | rg -i 'driverName|deviceName'                 # RADV / Radeon 8060S; confirm uma heap
-sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc vm.max_map_count vm.compaction_proactiveness vm.swappiness
-findmnt -no OPTIONS /                                       # noatime,lazytime,commit=10
-swapon --show; zramctl                                      # zram active (advisory; not managed, not asserted)
-iw reg get | rg -i country                                 # US
-cat /etc/iw-regdomain                                       # COUNTRY=US
-sudo nft list chain inet filter input                      # policy drop + lo + established/related + IPv4 ICMP incl echo-request; +remote-play ports IFF RY_REMOTE_PLAY_PORTS=true. No ICMPv6/NDP.
-sudo nft -c -f /etc/nftables.conf                          # syntax-valid (deploy/reload refuses a failing ruleset, v7.96/97)
-stat -c '%a %U:%G' /etc/NetworkManager/system-connections/* # 0600 root:root
-systemctl is-enabled bluetooth.service                     # enabled
-systemctl is-enabled avahi-daemon.service avahi-daemon.socket   # masked masked (MASK 12)
-printenv MANGOHUD                                          # 1
-grep -c '^cpu_temp' ~/.config/MangoHud/MangoHud.conf       # 0 (commented)
-grep -c '^cpu_power' ~/.config/MangoHud/MangoHud.conf      # 1 (live)
-grep -c '^# cpu_temp' ~/.config/MangoHud/MangoHud.conf     # 1 (expanded comment; byte-exact checks use the full string, §B9)
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver          # amd-pstate-epp
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor        # powersave
+cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference   # balance_performance
+cat /sys/devices/system/cpu/amd_pstate/status                    # active
+cat /sys/devices/system/cpu/amd_pstate/dynamic_epp               # disabled (absent pre-6.16)
+cat /sys/devices/system/cpu/amd_pstate/prefcore                  # enabled
+cat /sys/devices/system/cpu/cpufreq/boost                        # 1
+cat /sys/devices/system/clocksource/clocksource0/current_clocksource   # tsc — INFORMATIONAL ONLY
+cat /sys/block/nvme0n1/queue/scheduler                           # [none] (adjust node)
+cat /sys/class/drm/card*/device/power_dpm_force_performance_level      # auto (GPU_DPM_LEVEL)
+find /sys/kernel/iommu_groups -mindepth 1 -maxdepth 1 -type d | wc -l  # 0 — INFORMATIONAL ONLY
+rg -o 'amd_iommu=\S+' /proc/cmdline                              # amd_iommu=off
+rg -o 'ipv6\.disable=\S+' /proc/cmdline                          # ipv6.disable=1
+rg -o 'clearcpuid=\S+' /proc/cmdline                             # clearcpuid=umip
+rg -o 'pcie_aspm=\S+' /proc/cmdline                              # pcie_aspm=off
+rg -o 'processor.max_cstate=\S+' /proc/cmdline                   # 1
+rg -o 'fsck\S+' /proc/cmdline                                    # fsck.mode=force fsck.repair=yes
+sudo lspci -vv | rg 'LnkCtl:.*ASPM'                              # §5 (a): audit per-link ASPM state under pcie_aspm=off
+ls -l /dev/ntsync                                                # present (assert-only)
+lsmod | rg -c '^amdxdna'                                         # 0 (blacklisted; loaded = verify FAIL)
+sudo dmesg | rg -i 'AMD-Vi|DMAR'                                 # expect NO "AMD-Vi: Enabled"
+ip -6 addr                                                       # expect no IPv6 addresses
+cat /etc/modprobe.d/60-ry-modules.conf                           # header + amdxdna blacklist (default; NO mt7925e line)
+ls /etc/modprobe.d/60-ry-mt7925e.conf /etc/modprobe.d/60-ry-blacklist-amdxdna.conf 2>/dev/null   # ENOENT both (pre-7.99 leftovers; ZERO in-script/README guard — §6 gap)
+pacman -Q linux-firmware                                         # §10 MES 0x86 currency check (no version gate)
+pacman -Q pacman-contrib                                         # present
+vulkaninfo | rg -i 'driverName|deviceName'                       # RADV / Radeon 8060S; confirm uma heap
+systemctl --user show-environment | rg 'VKD3D_CONFIG|PROTON_FSR4|MANGOHUD'   # descriptor_heap / 1 / 1
+sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc vm.max_map_count vm.compaction_proactiveness vm.swappiness vm.watermark_boost_factor
+findmnt -no OPTIONS /                                            # noatime,lazytime,commit=10
+swapon --show; zramctl                                           # zram active (advisory; not managed)
+iw reg get | rg -i country                                       # US
+cat /etc/iw-regdomain                                            # COUNTRY=US
+sudo nft list chain inet filter input                            # policy drop + lo + est/rel + IPv4 ICMP incl echo-request; +ports IFF RY_REMOTE_PLAY_PORTS=true; no ICMPv6/NDP
+sudo nft -c -f /etc/nftables.conf                                # syntax-valid
+stat -c '%a %U:%G' /etc/NetworkManager/system-connections/*      # 0600 root:root
+systemctl is-enabled bluetooth.service                           # enabled
+systemctl is-enabled avahi-daemon.service avahi-daemon.socket    # masked masked
+grep -c '^cpu_temp' ~/.config/MangoHud/MangoHud.conf             # 0
+grep -c '^cpu_power' ~/.config/MangoHud/MangoHud.conf            # 1
+grep -c '^# cpu_temp' ~/.config/MangoHud/MangoHud.conf           # 1 (byte-exact checks use the full string)
+grep -c '^[a-z]' ~/.config/MangoHud/MangoHud.conf                # 19 active (companion v1.17.0 parity: set + order identical)
+cat /sys/class/hwmon/hwmon*/name | rg -c '^k10temp$'             # ≥1 — P0 #15 sensor presence — INFORMATIONAL ONLY
+sensors 2>/dev/null | rg -i -A1 '^k10temp'                       # Tctl populates? — §12 cpu_temp pickup evidence — INFORMATIONAL ONLY
 ```
 
-**Hard `--verify` asserts** (mismatch → exit 1/3): every `KERNEL_PARAMS` token present in `/proc/cmdline` + `rw` (generic loop in `_vrk_cmdline`); scaling_driver=`$EXPECTED_SCALING_DRIVER`, scaling_governor=`$CPUPOWER_GOVERNOR`, EPP=`$EPP_PREFERENCE`, amd_pstate status/prefcore/boost, `dynamic_epp=disabled`; GPU `power_dpm_force_performance_level=$GPU_DPM_LEVEL` (comparison QUOTED); usbcore.autosuspend=-1, nvme_core ps_max_latency=0, zswap∈{N,0}, nmi_watchdog=0, NVMe `[none]`; managed modprobe blacklist entries NOT loaded (`_vrkm_blacklist_modprobe`); live mkinitcpio `COMPRESSION=`/`COMPRESSION_OPTIONS` match (`_vsb_mkinitcpio` via `_ry_mkinitcpio_array`, multi-line-join, last-wins); regdom; nftables IPv4 ping accept present (`_vss_nft` hard static regression guard) + live warn (`_vrsv_nft_assert_ping`); mt7925e `disable_aspm=1`; NM system-connections 0600 root:root; PKGS_ADD (18) + Vulkan pkgs via `_vsp_required`. Presence checks are comment-proof (`_chk_grep` strips inline comments).
-
-**REMOVED asserts — do NOT verify** (gone since v7.90.0): `_vrkm_iommu` (0-iommu-groups), `_vrk_clocksource` (HPET-fail/TSC-demotion), `_vre_zram`, `_vre_tcp`. No THP, KSM, `ttm.*`, drirc, `iommu=pt`, ICMPv6/NDP, baloo, or `_kb_*` assert exists.
-
-### Security delta (ordered)
-
-1. **UMIP off** (`clearcpuid=umip`) — descriptor-table base leak, kernel tainted; headline open reduction. Name form is version-stable; exposure is identical to the numeric form.
-2. **AMD-Vi fully disabled** (`amd_iommu=off`) — no DMA isolation/remapping; any DMA-capable device (USB4/Thunderbolt, NVMe, NIC) can in principle DMA over system RAM unmediated. Named functional casualty: the **XDNA 2 NPU is blacklisted** (amdxdna probes `-EINVAL` without the IOMMU; `BLACKLIST_AMDXDNA=true` default). Validator-enforced opt-back-in (`BLACKLIST_AMDXDNA=false` + `amd_iommu=on iommu=pt`) restores DMA isolation and the NPU together. Open reduction.
-3. **IPv6 disabled + inbound IPv4 ping allowed** (net wash-to-slight-reduction) — `ipv6.disable=1` removes the whole IPv6 stack; the ruleset accepts inbound `echo-request` (discoverability up slightly). Counterweight: **avahi masked (unit+socket)** removes the second mDNS responder, so with resolved's `MulticastDNS=no` multicast discovery is closed entirely. Net LAN delta = +ping −mDNS.
-4. **split_lock_detect=off** — a misbehaving app can degrade the system.
-5. **Plaintext DNS** (`DNSOverTLS=no`, `DNSSEC=allow-downgrade`) reverting the CachyOS DoH default — DNS observable and spoofable on-path.
-6. **Optional inbound remote-play ports** (`RY_REMOTE_PLAY_PORTS`, default OFF) — when enabled, opens TCP 47984/47989/48010/27036/27037 + UDP 47998-48010/27031-27036.
-7. **Firewall default-deny-inbound ships** (nftables IPv4-only; lo + established/related + IPv4 diagnostic ICMP incl. inbound ping; all else dropped) — net positive, now with a `nft -c` pre-commit gate so a malformed managed ruleset cannot replace a working one.
+**Hard `--verify` asserts (mismatch → exit 1/3):** every KERNEL_PARAMS token + `rw` in /proc/cmdline (`_vrk_cmdline` generic loop); scaling_driver/governor/EPP/amd_pstate status/prefcore/boost/`dynamic_epp=disabled`; GPU `power_dpm_force_performance_level=$GPU_DPM_LEVEL` (comparison QUOTED); usbcore.autosuspend=-1, nvme_core ps_max_latency=0, zswap∈{N,0}, nmi_watchdog=0, NVMe `[none]`; managed modprobe blacklist entries NOT loaded (`_vrkm_blacklist_modprobe`); live mkinitcpio COMPRESSION/_OPTIONS match; regdom; nftables echo-request present (`_vss_nft` hard guard) + live warn (`_vrsv_nft_assert_ping`); NM system-connections 0600 root:root; PKGS_ADD 18 + Vulkan pkgs (`_vsp_required`). Presence checks comment-proof (`_chk_grep` strips inline comments).
+**REMOVED asserts — do NOT verify:** `_vrkm_iommu`, `_vrk_clocksource`, `_vre_zram`, `_vre_tcp` (gone since 7.90.0); no THP, KSM, `ttm.*`, drirc, `iommu=pt`, ICMPv6/NDP, baloo, `_kb_*`, kernel-floor, or mt7925e-option assert exists.
 
 ---
 
-## Investigation (§1–§12 by installer phase; §13 = candidate enhancements)
-
-### 1. Platform baseline and version floors
-
-**Current:** kernel floor 6.19 unconditional (deploy/`--check` exit 3, `--verify` warns; no override). CPU gate `Ryzen AI Max` (override `RY_INSTALL_SKIP_HARDWARE_CHECK=1`). Soft Mesa < 26.0 warn. No firmware-version advisory.
-
-- **6.19 floor — verify the single leg.** Sole rationale is gfx1151 post-0x83 MES amdgpu ≥6.19. Confirm (a) that claim upstream; (b) `f24f7b2f3af9` + `ae1737e7339b` land ≤6.18 as asserted; (c) the true gfx1151-stability floor isn't above 6.19. State per-subsystem floors.
-- **MES label — post-0x83, resolved in-script.** Was "0x86" in v7.99.1; now `post-0x83` (`0x83 reverted upstream 2025-12-01`). Verify the shipping GC 11.5.1 MES revision matches (git.kernel.org/kernel-firmware, ROCm #5724, Launchpad #2129150) — do not re-open.
-- **Floor-override removal:** a 6.18 snapshot cannot deploy (`--verify` still runs). Confirm the posture vs the misuse the override carried (README documents no workaround — correct).
-- Confirm soft Mesa 26.0 matches current RADV guidance; enumerate open gfx1151 RADV issues. Confirm gfx1151 reports `uma:1` natively.
-- **README BIOS posture:** flat `SPL=fPPT=sPPT=85 W` + `TjMax 90` (gains flatten past ~85 W). Installer-external, but every §6/§13d power call must name its budget (85 W README vs 140 W stock).
-- Sources: wiki.cachyos.org, docs.kernel.org gpu/amdgpu, gitlab.freedesktop.org/mesa, git.kernel.org linux-firmware + r8169.
-
-### 2. Packages
-
-**PKGS_ADD (18):** nvme-cli, cachyos-gaming-meta, cachyos-gaming-applications, lib32-mesa, mkinitcpio-firmware, fd, sd, dust, procs, bottom, htop, git-delta, lm_sensors, rtkit, realtime-privileges, ddcutil, nftables, pacman-contrib.
-**PKGS_DEL (9, `-Rns`, rdep-aware):** plymouth stack (×5) + micro + cachyos-micro-settings + cachy-update + kdeconnect.
-**AUR:** none. **Vulkan (chwd):** vulkan-radeon, lib32-vulkan-radeon.
-
-- **pacman-contrib — KEEP.** Script invokes `pactree` (`PACTREE_TIMEOUT_S=60`) + `paccache` (`-rk2`, `-ruk0`); declaring the provider closes a formerly-assumed dependency. (`archlinux-contrib` was removed in v7.101.0 — the v7.99.1 "never invoked" finding is closed.)
-- **`-D --asexplicit` re-mark (install-reason, not ordering):** post-`Syu`, PKGS_ADD members are re-marked so the Phase-4 `-Rns` can't orphan-cascade one that pre-existed as a dependency. Idempotent; failure warns (`PKG_ASEXPLICIT_FAIL`).
-- Confirm the gaming metas supply RADV/Proton/gamescope/MangoHud/GameMode. **GameMode omission — KEEP** (governor/EPP/DPM pinned profile-wide; its governor switch is redundant); confirm the meta's MangoHud doesn't clash with the shipped conf.
-- `rtkit` + realtime-privileges for PipeWire priority (rtkit-daemon socket-activated); `lib32-mesa` still needed beside `lib32-vulkan-radeon`; PKGS_DEL dependency fallout (`_RY_PKG_REMOVE_SKIPS`).
-- Advisory: does znver/x86-64-v4 (AVX-512) benefit this build over v3?
-- Sources: wiki.cachyos.org, wiki.archlinux.org/Gaming + PipeWire + RealtimeKit, archlinux.org/packages.
-
-### 3. Kernel cmdline (17)
+# Appendix A — install-phase model (validate sequence, not prose)
 
 ```
-8250.nr_uarts=0 amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 nowatchdog nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off tsc=reliable usbcore.autosuspend=-1 zswap.enabled=0
+1 Preflight     _install_preflight          — _ir_* gates (counts 21, keys incl BLACKLIST_AMDXDNA + charsets/metachar, post-hooks, root UUID); mesa soft floor. NO kernel-floor gate.
+2 Packages      _install_packages           — mkinitcpio.conf pre-deployed → pacman -Syu; PKGS_ADD re-marked -D --asexplicit; chwd Vulkan
+3 Configuration _install_system_files       — render+deploy 17 files (atomic tmp+rename); format-validate pre-write; nftables additionally nft -c
+4 Services      _install_configure_services — fstab → resolved → PKGS_DEL (-Rns) → mask (nft-first, ufw flush; MASK 12) → iwd handoff → enable → regdom → NTP (chronyd/ntpd/openntpd guard) → RTC write-back
+5 Boot          _install_rebuild_boot       — taint-gate → mkinitcpio -P → sdboot-manage gen/update (gated on boot-critical writes)
+6 Finalize      _install_finalize           — user daemon-reload → paccache (-rk2, -ruk0) → NetworkManager restart
 ```
 
-- **`clearcpuid=umip`:** UMIP off, kernel tainted; name form version-stable (numeric bit-index is layout-fragile). Confirm `umip` name accepted on ≥6.19; README says drop if no `umip_printk` stutter. Asserted generically (`_vrk_cmdline`/`_vsb_cmdline`), no UMIP-specific check.
-- **`amd_iommu=off`:** validator-paired to `BLACKLIST_AMDXDNA` (see §10). ROCm unaffected (`IOMMU Support: None`); NPU is the named casualty. Weigh marginal latency vs DMA-isolation loss vs NPU loss.
-- **`ipv6.disable=1`:** hard-coupled to the IPv4-only nftables ruleset. LAN impact, Steam/Proton netcode fallback, README dual-stack opt-out.
-- **processor.max_cstate=1:** idle power/thermal (name budget) vs wake-latency/jitter; conflict with boost headroom? is `1` right?
-- **btusb.enable_autosuspend=n:** MT7925/BT reconnect fix; overlap with `usbcore.autosuspend=-1`?
-- **fsck.mode=force + fsck.repair=yes:** every-boot fsck on ext4 — boot cost, auto-repair safety, hook handshake, durability vs periodic.
-- **amd_pstate=active:** recommended on Zen 5; interaction with powersave + EPP + `dynamic_epp=disabled`.
-- **split_lock_detect=off:** perf vs stability; blast radius.
-- No `preempt=` — KEEP-omitted (CachyOS boots full; `_vrk_cmdline` INFOs the model, `_ok` on `full`). Zero amdgpu/ttm params — hands-off (`_vrkm_amdgpu` no-ops without `amdgpu.*`).
-- Validate: tsc=reliable, nowatchdog, 8250.nr_uarts=0, usbcore.autosuspend=-1, nvme_core ps_max_latency=0, pcie_aspm.policy=performance, zswap.enabled=0.
-- **Input hygiene:** tokens charset-gated `^[A-Za-z0-9._,=-]+$`; a new token outside it must also change the validator.
-- Sources: docs.kernel.org kernel-parameters + amd-pstate + UMIP + IOMMU + ipv6-sysctl, wiki.archlinux.org/AMDGPU + IOMMU + fsck, amd.com ROCm.
+- Firewall handoff lives in Phase 4 (nftables live before ufw flushed/masked); Phase-5 regeneration fires only when a `_RY_BOOT_CRITICAL_DSTS` member changed. Flag any recommendation moving a cmdline/mkinitcpio change outside the Phase-5 gate.
+- `_RY_BOOT_CRITICAL_DSTS` (4) = `_RY_BACKUP_TARGETS` (derived, count-asserted): /boot/loader/loader.conf, /etc/kernel/cmdline, /etc/sdboot-manage.conf, /etc/mkinitcpio.conf — all get `.ry.bak` + post-write verify/restore (plus fstab during rewrite). Preflight refuses a side-effecting generator in the backup set (sysctl.d guard).
+- `_RY_POST_HOOKS` (17 entries, 16 distinct tags; dispatch FIRST-MATCH-WINS by list order — ordering is load-bearing): `/boot/*|loader`, `/etc/kernel/cmdline|cmdline`, `/etc/sdboot-manage.conf|boot`, `/etc/mkinitcpio.conf|boot`, `*/resolved.conf.d/*|resolved`, `*/logind.conf.d/*|logind`, `*/NetworkManager-dispatcher.service.d/*|nmdispatch`, `*/NetworkManager/conf.d/*|nm`, `/etc/iw-regdomain|regdom`, `/etc/bluetooth/main.conf|bluetooth`, `/etc/nftables.conf|nft`, `/etc/default/cpupower-service.conf|cpupower`, `*/sysctl.d/*|sysctl`, `/etc/udev/rules.d/*|udev`, `*/modprobe.d/*|modprobe`, `*/environment.d/*|envd`, `*/MangoHud/MangoHud.conf|mangohud`. `_ir_validate_post_hooks` refuses any tag lacking `_post_<tag>`.
+- Boot family shares `_post_boot_apply <target> <skip_mki>`: `_post_boot` → skip_mki=false (full mkinitcpio -P); `_post_cmdline`/`_post_loader` → true (sdboot regen only). Notify-only: `_post_logind`, `_post_modprobe` (reboot), `_post_envd`/`_post_mangohud` (session). `_post_nm` DEFERS the NM restart when Wi-Fi is the active route — confirm the deferred restart lands (Phase 6) and is surfaced.
+- All destinations + `--install-file` values canonicalized via `realpath -m` at load (failure warns, falls back literal). Unmatched patterns log `POST_HOOK_NONE`; unchanged bytes log `POST_HOOK_SKIP_UNCHANGED`; `_post_udev` runs `udevadm verify` (systemd ≥254) before reload + retrigger (block AND cpu).
 
-### 4. Bootloader and initramfs
+# Appendix B — exact rendered bodies (validate content, not paraphrase)
 
-**loader.conf:** default @saved, timeout 0, console-mode keep, editor no.
-**sdboot-manage:** DEFAULT_ENTRY manual, OVERWRITE/REMOVE_EXISTING/REMOVE_OBSOLETE yes, LINUX_FALLBACK_OPTIONS "quiet".
-**mkinitcpio:** MODULES=(amdgpu), HOOKS (11) base systemd autodetect microcode modconf kms keyboard sd-vconsole block filesystems fsck, COMPRESSION zstd (-1 -T0), explicit BINARIES=()/FILES=(). Pre-deployed in Phase 2 → one rebuild at `-Syu`.
+Every generator emits a leading `#` header line — byte-exact/checksum comparisons include it.
 
-- Verify HOOKS order (systemd/microcode/kms/sd-vconsole/block); amdgpu early-KMS; fsck-hook handshake with no boot prompt.
-- **COMPRESSION_OPTIONS=(-1 -T0):** zstd -1 all-threads. Quantify boot-decompress vs default-3 (sub-100 ms on NVMe) and image size vs ESP `BOOT_SPACE_*` (200/500 MB) with multiple kernels + fallback. TUNE to default-3 if size threatens the budget. Tokens charset-gated + count-asserted — any TUNE updates both.
-- **Live verify:** `_vsb_mkinitcpio` compares live `COMPRESSION=`/`COMPRESSION_OPTIONS` (via `_ry_mkinitcpio_array`, multi-line join, last-wins) — drift caught. Confirm last-wins matches shell-sourcing.
-- timeout 0 + manual + REMOVE_EXISTING=yes wipes foreign BLS entries; confirm recovery ergonomics (live-USB → chroot) intended. sdboot-manage current vs kernel-install/UKI (UKI out of scope).
-- Sources: wiki.archlinux.org/Mkinitcpio + systemd-boot, sdboot-manage upstream.
-
-### 5. GPU / Vulkan / gaming
-
-No drirc (uma:1 native), no ttm/modprobe GPU params.
-**ENV_VARS (11):** AMD_VULKAN_ICD=RADV, DXVK_LOG_LEVEL=none, DXVK_LOG_PATH=none, MANGOHUD=1, MESA_SHADER_CACHE_MAX_SIZE=16G, PROTON_ENABLE_WAYLAND=1, PROTON_FSR4_RDNA3_UPGRADE=1, PROTON_LOCAL_SHADER_CACHE=1, VKD3D_DEBUG=none, VKD3D_SHADER_DEBUG=none, WINEDEBUG=-all.
-
-- **ntsync (assert-only):** no autoload conf; `_vre_ntsync` + `_ntsync_state` (builtin|loaded|loaded_nodev|missing) survive; README ≥6.14 + `PROTON_NO_NTSYNC=1` opt-out. Confirm: current vs esync/fsync; CachyOS `CONFIG_NTSYNC=y` (so `/dev/ntsync` without autoload); `loaded_nodev` still a real failure; Proton frametime benefit on 16C/32T; opt-out current. Floor subsumes ntsync's requirement.
-- **PROTON_FSR4_RDNA3_UPGRADE=1:** confirm current Proton-CachyOS consumes it for FSR3.1→FSR4 on RDNA 3.5, the min version, and the `DXIL_SPIRV_CONFIG=wmma_rdna3_workaround` companion; no-op on non-FSR titles. Unverified ⇒ FIX-to-remove; verified ⇒ KEEP + cite.
-- **RADV heap (drirc removed):** confirm uma:1 on current Mesa.
-- **GTT (ttm removed):** kernel auto-sizes (~62 GiB); README routes >62 GiB single allocs to BIOS UMA carveout (≤96 GB), not deprecated `amdgpu.gttsize`; verify `/sys/module/ttm/parameters/pages_limit`. `amd_iommu=off` doesn't change the ceiling.
-- PROTON_ENABLE_WAYLAND maturity/fallback; RADV vs VK_DRIVER_FILES; shader-cache sizing; MANGOHUD=1 overhead, clean with gamescope/GameMode.
-- **XDNA NPU:** blacklisted default (§8/§10) — no gaming impact; future LLM/NPU work needs the opt-in.
-- Sources: docs.mesa3d.org (RADV, APU heap), gitlab.freedesktop.org/mesa + drm/amd, github Proton-CachyOS, amd.com ROCm.
-
-### 6. CPU performance and power
-
-amd_pstate=active; governor **powersave** (`CPUPOWER_GOVERNOR`); EPP **balance_performance** via udev (`$EPP_PREFERENCE`, enum-gated `_RY_EPP_LEVELS`); **GPU_DPM_LEVEL=auto** (add-only udev, `ENV{DEVTYPE}=="drm_minor"`); `EXPECTED_SCALING_DRIVER=amd-pstate-epp`; `dynamic_epp=disabled` asserted. Masked: power-profiles-daemon, ananicy-cpp, modemmanager.
-
-- **governor=powersave + EPP=balance_performance — special case, do not flag the governor.** Under amd_pstate=active, `powersave` honors EPP (dynamic) while `performance` pins max and ignores it — this triple is the documented EPP-honoring max-perf config on Zen 5. `balance_performance`→`performance` stays **UNCERTAIN** (no gfx1151/Zen-5 frametime data); any change is the `EPP_PREFERENCE` global only (enum-clean).
-- **GPU_DPM_LEVEL=auto:** enum-gated `_RY_DPM_LEVELS`. Re-evaluate `auto` vs `high` for frametime/1%-lows on the shared budget — two inertia facts: rule is add-only (no re-assert after GPU reset) AND only began firing at the v7.94/95 matcher fix (pre-fix "high made no difference" is void). Name the budget.
-- Confirm EPP live-applies (`_post_udev`: `udevadm verify` ≥254, reload + retrigger cpu/block) and GPU rule matches at enumeration. prefcore + boost=1 on Strix Halo; `dynamic_epp` node ≥6.16. Masks (ppd/ananicy-cpp/modemmanager) safe on current CachyOS.
-- Sources: docs.kernel.org amd-pstate, wiki.archlinux.org/CPU_frequency_scaling + AMDGPU, freedesktop ppd.
-
-### 7. Memory and storage
-
-zswap.enabled=0; NVMe scheduler none (udev, sorts after vendor 60-ioschedulers.rules).
-**SYSCTL_VALUES (9):** default_qdisc=fq, netdev_budget=600, netdev_budget_usecs=5000, tcp_congestion_control=bbr, tcp_notsent_lowat=16384, tcp_slow_start_after_idle=0, vm.compaction_proactiveness=0, vm.max_map_count=2147483642, vm.swappiness=150 (priority 95, after vendor 70-cachyos-settings.conf).
-fstab ext4 noatime,lazytime,commit=10. THP/KSM/oomd left to CachyOS; vm.page-cluster + vm.vfs_cache_pressure dropped (vendor duplicates).
-
-- (The v7.99.1 `netdev=2.5GbE` comment conflict is closed — now `netdev=10GbE (RTL8127)`, matching the platform.)
-- **netdev_budget/usecs on 10 GbE:** confirm the 600/5000 pair is sized for dual 10 GbE, or propose values with driver evidence.
-- **Vendor-duplicate drop a no-op?** Confirm 70-cachyos-settings.conf sets page-cluster=0 + vfs_cache_pressure=50 (a differing default makes the drop a silent change).
-- zram: swappiness 150 on 128 GB — gratuitous or LLM-reclaim-helpful? zswap=0 vs CachyOS zram (no double compression).
-- NVMe none vs mq-deadline/kyber; `nr_requests`/`read_ahead_kb` unset — propose ATTRs only with evidence, else defaults optimal; confirm 99- sorts after 60-.
-- noatime+lazytime coexistence; commit=10 vs every-boot fsck (§3); fstrim.timer vs continuous discard. max_map_count (MAX_INT−5) Proton/anti-cheat; compaction_proactiveness=0 for large unified allocs; oomd disabled on 128 GB.
-- Sources: docs.kernel.org (block, sysctl/vm), wiki.archlinux.org/Zram + SSD + Ext4.
-
-### 8. Network and latency
-
-sysctl net (§7); IPv6 disabled (§3); nftables IPv4-only (§10). NM: wifi.backend=wpa_supplicant, wifi.powersave=2 (off), logging WARN.
-**Modprobe merged (v7.99.0):** `60-ry-modules.conf` = `options mt7925e disable_aspm=1` + conditional `blacklist amdxdna` (default on).
-resolved: MulticastDNS=no, LLMNR=no, DNSOverTLS=no, DNSSEC=allow-downgrade (plaintext; diverges from CachyOS DoH). regdom US. Masked: NetworkManager-wait-online, modemmanager, avahi-daemon.service + .socket. Enabled: NetworkManager.
-
-- **⚠ OPEN GAP (Low/Low) — modprobe-leftover migration.** The only material open finding in v7.101.0. Superseded `60-ry-mt7925e.conf` / `60-ry-blacklist-amdxdna.conf` have **zero in-script references**; `_vrkm_blacklist_modprobe` is generator-sourced (checks the intended blacklist, not on-disk), so a pre-7.99 leftover is invisible to every verify path. Only the README `sudo rm` note guards it — a stale `60-ry-blacklist-amdxdna.conf` keeps the NPU blacklisted after opt-in, undetected. ADD-check candidate.
-- **avahi masked:** confirm no host dependency (printer/`.local` discovery) and that unit+socket is complete closure (no D-Bus resurrection).
-- **mt7925e disable_aspm=1:** still the correct MT7925 mitigation (coredump/BT-reconnect/assoc); has an upstream mt76 fix landed (file comment: "drop when upstream fixes")? redundancy vs `pcie_aspm.policy=performance`.
-- **amdxdna blacklist:** confirm `-EINVAL (ret -22)` is the real probe failure under `amd_iommu=off`; blacklist-vs-alternatives; the fail-closed coupling (§10).
-- NM wpa_supplicant vs iwd parity; wifi.powersave=2 for mt76 latency; iwd opt-in intact. bbr+fq / BBRv3 status; 10 GbE netdev + tcp_rmem/wmem/ring for line rate. mDNS+plaintext DNS privacy reduction (§10); same-basename replace caution (§B5/B6). regdom US: MT7925 TX/channel on current wireless-regdb, 6 GHz AFC, non-US hand-edit.
-- Sources: docs.kernel.org/networking, wiki.archlinux.org/Sysctl + NetworkManager + Wireless, git.kernel.org wireless-regdb + mt76, man.archlinux.org avahi-daemon.
-
-### 9. systemd units, time-sync
-
-**Mask (12):** ananicy-cpp, power-profiles-daemon, NetworkManager-wait-online, ufw, modemmanager, avahi-daemon.service + .socket, sleep/suspend/hibernate/hybrid-sleep/suspend-then-hibernate targets.
-**Enable (5):** fstrim.timer, NetworkManager, cpupower, nftables, bluetooth.
-**Not enabled:** oomd (intentional), NetworkManager-dispatcher + rtkit-daemon (socket-activated). iwd untouched; ufw flushed after nftables live.
-**NTP unconditional** (`RY_NO_NTP_REMEDIATION` removed): `_ry_check_time_sync` scans chronyd/ntpd/openntpd and REFUSES to enable timesyncd if any is active ("two NTP clients would conflict"); else enables timesyncd, re-checks after 2 s, runs `_ry_rtc_writeback` on sync. (The v7.99.1 openntpd scan-gap is closed.)
-
-- Each mask safe/beneficial on CachyOS: ananicy-cpp + ppd (§6); modemmanager (no cellular); avahi (§8); sleep/suspend masked = no suspend (always-on mini-PC).
-- **NTP escape:** opt-out-env removal acceptable (remediation is warn-only, non-fatal; a user can mask timesyncd — state that escape).
-- **RTC write-back:** `--systohc --utc` safe; `RTCInLocalTZ=yes` defer branch correct; no ownership conflict with timesyncd.
-- nftables ufw-flush-then-mask leaves no unfirewalled window (mask skipped if nft not live); oneshot judged by live ruleset; `nft -c`-gated at deploy + `_post_nft`. fstrim.timer vs continuous discard; cpupower vs CachyOS freq mgmt. logind Handle*Key=ignore (8 keys incl LongPress) — intended, no lockout.
-- Sources: man.archlinux.org (systemd.unit, logind.conf, hwclock, timesyncd, avahi-daemon), wiki.archlinux.org (Bluetooth, System time).
-
-### 10. Security and safety (cross-cutting)
-
-nftables **IPv4-only** default-deny-inbound (ufw masked; `ipv6.disable=1`): policy drop, lo accept (first), ct established/related accept, ct invalid drop, IPv4 ICMP `{ echo-request, destination-unreachable, time-exceeded, parameter-problem }` accept (inbound ping ALLOWED), forward drop, output accept. No ICMPv6/NDP. `RY_REMOTE_PLAY_PORTS` (default false) appends TCP `{47984,47989,48010,27036,27037}` + UDP `{47998-48010,27031-27036}`. amd_iommu=off, clearcpuid=umip, split_lock_detect=off. Hard gate: rendered ruleset passes `nft -c -f` before commit; `_post_nft` re-validates before reload.
-
-- **amd_iommu=off (#2 reduction):** quantify DMA-isolation loss (USB4/TB, NVMe, NIC). Named cost: XDNA 2 NPU blacklisted. Opt-back-in is one validator pair (`BLACKLIST_AMDXDNA=false` + `amd_iommu=on iommu=pt`) restoring isolation AND NPU together. Confirm the coupling asymmetry is intended — `amd_iommu=on` + `BLACKLIST_AMDXDNA=true` is valid; only `false`-without-IOMMU refuses. ROCm unaffected.
-- **IPv6 off + ping accepted:** quantify both directions; `_ir_validate_keys` coupling holds. Net LAN delta = +ping −mDNS (avahi masked).
-- **RY_REMOTE_PLAY_PORTS:** validate TCP 47984/47989/48010 (Sunshine), 27036/27037 (Steam) + UDP vs current Sunshine/Moonlight/Steam; default-OFF right. Every toggle is an embedded scalar with no `set -q` guard — `set -g` clobbers exported values. Confirm the env-proof posture is intended/documented.
-- **Inbound ping = REGRESSION GUARD:** `_vss_nft` hard-fails on missing `echo-request`; `_vrsv_nft_assert_ping` warns live. `destination-unreachable` preserves PMTUD.
-- **`nft -c` gate:** confirm pre-commit + post-hook validate close the malformed-ruleset window (same binary → `nft -c` pass guarantees `nft -f` load); restart failure applies at boot — confirm surfaced (warn), not silent.
-- `flush ruleset` blast radius vs docker/libvirt/podman. `ct invalid drop` ordering (after lo+established) can't drop valid traffic.
-- Ordered security-delta (above): umip #1, amd_iommu=off+NPU #2, IPv6-off/ping-on/avahi-masked #3.
-- Sources: wiki.archlinux.org (nftables, Security, IOMMU, IPv6), docs.kernel.org (split lock, UMIP, AMD-Vi), github Sunshine/Moonlight, man.archlinux.org nft(8).
-
-### 11. Known issues and DKMS currency
-
-- **MES page faults:** label now **post-0x83** in-script (v7.99.1 "0x86, unreconciled" resolved). Firmware-revision check is the §1 task.
-- **RTL8127 throughput + suspend/shutdown hang:** in-tree r8169 (`f24f7b2f3af9`, `ae1737e7339b`); script states these land ≤6.18. Cite the exact releases; if either landed at 6.19+, the claim is FIX-doc and the floor regains a second leg. No DKMS.
-- **MT7925 panics/deauth/coredump:** mitigated (`disable_aspm=1` + `btusb.enable_autosuspend=n` + wpa_supplicant); 6.17+ fixes covered by the floor. Check whether "drop when upstream fixes" is met.
-- **amdxdna probe failure:** `-EINVAL (ret -22)` under `amd_iommu=off` every boot; profile blacklists it. Confirm the errno/ret current, and that no future kernel makes the NPU IOMMU-optional (obsoleting the blacklist).
-- **Strix Halo ACP:** open upstream (no ACP70 internal-mic ASoC driver / UCM profile as of mid-2026); internal mic undetected; nothing to ship. Known gap; upstream board report is the action.
-- Recommend a kernel/firmware floor over DKMS for any landed fix.
-- Sources: gitlab.freedesktop.org/drm/amd, git.kernel.org linux-firmware + r8169 + mt76, bugzilla.kernel.org, discuss.cachyos.org, docs.kernel.org accel/amdxdna.
-
-### 12. MangoHud, Bluetooth, and hygiene
-
-**MangoHud.conf (19 active + 1 commented, 0600):** horizontal, legacy_layout=0, position=top-left, toggle_hud=Shift_R+F12, fps, frametime, frame_timing, gpu_stats, gpu_temp, gpu_core_clock, gpu_power, cpu_stats, `# cpu_temp intentionally disabled …`, cpu_mhz, cpu_power, vram, ram, font_size=20, text_outline, background_alpha=0.4. Enabled via MANGOHUD=1.
-**bluetooth main.conf:** FastConnectable=true, AutoEnable=true, ReconnectAttempts=3. USER_DESTINATIONS = 2.
-
-- **`cpu_power` — live target:** confirm it populates from Zen 5 RAPL/`power1_average` hwmon under Wayland; blank/zero ⇒ FIX-to-investigate. `cpu_temp` stays dormant (re-enabling re-trips MangoHud #1794, may need the sensor key).
-- **Byte-exact:** checksum comparison must use the expanded comment string; `grep -c '^# cpu_temp'` still returns 1.
-- Confirm all 19 directives valid; gpu_power/cpu_power populate from sensors; gpu_temp/gpu_core_clock/vram/cpu_mhz from amdgpu under Wayland; overhead near-zero with gamescope/GameMode.
-- **Bluetooth:** BlueZ keys current; ReconnectAttempts=3 + backoff sane; AutoEnable fixes adapter-off-at-boot; complementary with `btusb.enable_autosuspend=n`.
-- Sources: github flightlessmango/MangoHud (#1794, #1825), wiki.archlinux.org/MangoHud + Bluetooth.
-
-### 13. Candidate enhancements (absent knobs — gaming-first)
-
-Each item is a knob the profile does NOT set. Anchor every call to gfx1151 / Zen 5 / RDNA 3.5 / current Mesa+Proton-CachyOS. Reserve ADD-as-default for a clear, low-risk frametime/throughput win. Never invent a flag — cite upstream or mark UNCERTAIN. Bias toward KEEP-omitted; the profile is intentionally lean. (v7.92–7.101.0 added none of these.)
-
-**13a. Kernel cmdline**
-- **`mitigations=off` — KEEP-omitted.** Zen 5 unaffected by Inception/SRSO; no measured gaming benefit; residual mitigations HW/microcode-handled. Re-open as ADD-opt-in only on a published gfx1151 Proton frametime delta > ~2%. IMPACT Low · RISK Med (security).
-- **`amdgpu.ppfeaturemask=0xffffffff` — KEEP-omitted.** Undervolt/OC not implemented on gfx1151 (overdrive/power-cap "Not supported", ROCm #5750); package cap shared. CPU undervolt via ryzenadj is the real lever (out of scope). IMPACT Low · RISK Med.
-- **`preempt=full` — KEEP-omitted, redundant.** CachyOS desktop kernel boot-defaults full (`CONFIG_PREEMPT_DYNAMIC=y`). IMPACT none · RISK none.
-- **`nvme_core.io_timeout` / `pcie_port_pm=off` — KEEP-omitted.** Redundant beside ps_max_latency=0 + aspm.policy=performance. IMPACT Low · RISK Low.
-
-**13b. RADV / Mesa env**
-- **`RADV_PERFTEST` — KEEP-omitted (gpl/sam) / UNCERTAIN (nggc).** gpl default-on since Mesa 23.1; sam auto-on when all VRAM CPU-visible (APU); nggc: no gfx1151 benchmark → UNCERTAIN. rtwave64 hurts RDNA2; ignore. IMPACT Low · RISK Low.
-- **`RADV_DEBUG` correctness toggles — KEEP-omitted** unless a live gfx1151 rendering bug requires one; flag any open issue a toggle works around.
-- **`MESA_VK_WSI_PRESENT_MODE` / `vblank_mode` — KEEP-omitted (per-game).**
-- **`mesa_glthread=true` — KEEP-omitted.** GL-only; Proton is Vulkan-dominant. IMPACT Low · RISK Low.
-
-**13c. DXVK / VKD3D-Proton**
-- **dxvk.conf — KEEP-omitted (auto optimal).** GPL default-on; numCompilerThreads=0 auto-detects. Legacy DXVK_ASYNC superseded (gplAsyncCache removed in DXVK 2.7) — never recommend the old async patch. IMPACT Low · RISK Low.
-- **Upscaler envs beyond §5 — KEEP-omitted.** PROTON_FSR4_RDNA3_UPGRADE=1 (+ per-title DXIL_SPIRV_CONFIG workaround) is the shipped scope.
-- **`VKD3D_CONFIG` — KEEP-omitted (per-game).**
-
-**13d. Firmware / platform (verify-only)**
-- **Resizable BAR / SAM — verify-only, auto-on.** All VRAM CPU-visible on Strix Halo; RADV auto-enables sam. Optional INFO via rocminfo / lspci BAR / amdgpu dmesg.
-- **BIOS UMA carveout vs GTT — KEEP-omitted (gaming).** Default GTT (~62 GiB) never bottlenecks a game; carveout is compute-oriented.
-- **BIOS power ceiling (verify-only):** README prescribes `SPL=fPPT=sPPT=85 W` + `TjMax 90`. Installer-external; the only action is consistency — every §6/§13 power statement must name its assumed budget (85 W README vs 140 W stock), and any DPM=`high`/EPP=`performance` re-evaluation must use the 85 W case if the user follows the README. IMPACT doc-only · RISK none.
-
-**13e. Scheduler / memory**
-- **`read_ahead_kb` / `nr_requests` — KEEP-omitted, defaults optimal** absent game-load/LLM-read evidence (§7). IMPACT Low · RISK Low.
-- **`vm.max_map_count` — KEEP (sufficient).** MAX_INT−5 (SteamOS value) satisfies Proton/anti-cheat.
-- **CPU isolation (`isolcpus`, `nohz_full`, `rcu_nocbs`) — KEEP-omitted (wrong here).** Hurts a 16C/32T gaming desktop. IMPACT Low · RISK Med (if added).
-
----
-
-## Scope and non-goals
-
-- Recommendations only — do not emit a modified script.
-- Out of scope: dotfiles, shells, editors, secrets, backups, multi-user, non-CachyOS, laptops, UKI, BIOS flashing (README link-out only).
-- Per-game Proton tuning is secondary; prioritize system-wide config.
-
-### Protected / special-case items (do not recommend reinstating)
-
-Items deliberately removed or disabled — do not recommend reinstating unless current upstream directly contradicts the rationale (then flag, not FIX):
-
-- `amdgpu.ppfeaturemask`, `--country` flag, TTM/GTT cap, RADV drirc, MangoHud `fps_metrics`, `vm.page-cluster`/`vm.vfs_cache_pressure` (vendor-provided), ntsync autoload conf (assert-only), baloofilerc, the `_kb_*` subs + `_ry_check_umip_disabled`, ICMPv6/NDP rules (do NOT re-add without restoring IPv6), the linux-firmware version advisory.
-- `RY_INSTALL_SKIP_KERNEL_FLOOR_CHECK` (removed v7.98.x — do not recommend a floor bypass).
-- `RY_NO_NTP_REMEDIATION` (removed v7.96/97 — the escape is masking timesyncd).
-- `60-ry-mt7925e.conf` / `60-ry-blacklist-amdxdna.conf` as standalone files (merged v7.99.0).
-- `clearcpuid=514` numeric form (renamed v7.94/95 — never revert to the bit index).
-- `archlinux-contrib` (removed v7.101.0 — do not recommend re-adding).
-
-Live config to evaluate as KEEP-or-FIX-to-remove (not protected): PROTON_FSR4_RDNA3_UPGRADE, MangoHud gpu_power/text_outline/toggle_hud/cpu_power, `ipv6.disable=1`, inbound-ping accept, `BLACKLIST_AMDXDNA=true` default (evaluate the NPU-off default, not the mechanism). `cpu_temp` stays a user opt-in.
-
-**Special cases:**
-- **IOMMU:** ships `amd_iommu=off`. Do NOT recommend `iommu=pt`/`amd_iommu=on` as default unless ROCm on gfx1151 is proven to require it (it is not) OR a DMA-isolation requirement is established. The opt-in is per-user and validator-enforced.
-- **IPv6/nftables:** ships `ipv6.disable=1` + IPv4-only ruleset accepting inbound ping. Do NOT flag ping-accept as a regression (asserted regression-guard); do NOT re-add ICMPv6/NDP without restoring IPv6.
-- **Governor/EPP:** powersave + balance_performance is the EPP-honoring config under amd_pstate=active — do not flag powersave without proving `performance` would honor the hint.
-- **GPU_DPM_LEVEL:** `auto` is deliberate. Do not flag without gfx1151 frametime/1%-low evidence for `high` under the shared budget — and remember the rule only began firing at v7.94/95 (pre-fix observations are void).
-
----
-
-# Deep-pass appendix — exact generated bodies + verify surface
-
-§1–§13 are value-level. This appendix is artifact-level: the exact strings the script writes, the verify subsystem, and the install-phase model. Validate the **rendered content**, not a paraphrase. Every block is quoted from the generator functions in v7.101.0 (UUIDs/joins resolved at runtime). Every generator emits a leading `#` header-comment line — byte-exact/checksum comparisons must include it.
-
-## A. Install-phase model (`_RY_PHASE_NAMES`)
-
-Six ordered phases; recommendations must respect this sequence:
-
+### B1. /etc/kernel/cmdline + /etc/sdboot-manage.conf + /etc/mkinitcpio.conf
 ```
-1 Preflight     _install_preflight          — _ir_* gates (counts=21, keys incl BLACKLIST_AMDXDNA + charsets/metachar, kernel floor NO-OVERRIDE, post-hooks, root UUID); mesa soft-floor
-2 Packages      _install_packages           — mkinitcpio.conf pre-deployed (tagged pre-Syu seed) → pacman -Syu; PKGS_ADD re-marked -D --asexplicit post-Syu; chwd Vulkan
-3 Configuration _install_system_files        — render+deploy all managed files (atomic tmp+rename); format-validate before write; nftables.conf additionally nft -c pre-validated
-4 Services      _install_configure_services  — fstab rewrite + resolved + PKGS_DEL (-Rns) + mask (nft-first, then ufw flush; MASK 12) + iwd handoff + enable + regdom + NTP (always; chronyd/ntpd/openntpd guard) + RTC write-back
-5 Boot          _install_rebuild_boot        — taint-gate → mkinitcpio -P + sdboot-manage gen/update (gated on boot-critical writes)
-6 Finalize      _install_finalize            — user daemon-reload + paccache (-rk2 and -ruk0 separate) + NetworkManager restart
+rw root=UUID=<_ROOT_UUID> 8250.nr_uarts=0 amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 nowatchdog nvme_core.default_ps_max_latency_us=0 pcie_aspm=off processor.max_cstate=1 quiet split_lock_detect=off tsc=reliable usbcore.autosuspend=-1 zswap.enabled=0
 ```
-
-- Confirm the firewall handoff lives in Phase 4 (nftables live before ufw flushed/masked) and boot-critical regeneration (Phase 5) fires only when a `_RY_BOOT_CRITICAL_DSTS` member changed. Flag any recommendation moving a cmdline/mkinitcpio change outside the Phase-5 gate.
-- **`_RY_BOOT_CRITICAL_DSTS` (4):** `/boot/loader/loader.conf`, `/etc/kernel/cmdline`, `/etc/sdboot-manage.conf`, `/etc/mkinitcpio.conf`. **`_RY_BACKUP_TARGETS` = the same 4** (derived): all four get `.ry.bak` + post-write verify/restore (plus fstab during its rewrite). Confirm the derived-equality is count-asserted (tripwire 4) so the sets cannot diverge. Preflight refuses if any backup target uses a side-effecting generator (the sysctl.d guard at line 852).
-- **`_RY_POST_HOOKS` (17 entries, 16 distinct tags):** `/boot/*|loader`, `/etc/kernel/cmdline|cmdline`, `/etc/sdboot-manage.conf|boot`, `/etc/mkinitcpio.conf|boot`, `*/resolved.conf.d/*|resolved`, `*/logind.conf.d/*|logind`, `*/NetworkManager-dispatcher.service.d/*|nmdispatch`, `*/NetworkManager/conf.d/*|nm`, `/etc/iw-regdomain|regdom`, `/etc/bluetooth/main.conf|bluetooth`, `/etc/nftables.conf|nft`, `/etc/default/cpupower-service.conf|cpupower`, `*/sysctl.d/*|sysctl`, `/etc/udev/rules.d/*|udev`, `*/modprobe.d/*|modprobe`, `*/environment.d/*|envd`, `*/MangoHud/MangoHud.conf|mangohud`. `_ir_validate_post_hooks` refuses deploy on any tag lacking `_post_<tag>` (empty tags refuse).
-  - **Dispatch is FIRST-MATCH-WINS by list order** (`_post_hook_for_target`) — pattern ordering is load-bearing for overlapping globs; a recommendation reordering or adding an entry must preserve it.
-  - The boot family shares one body, `_post_boot_apply <target> <skip_mki>`: `_post_boot` passes `skip_mki=false` (full `mkinitcpio -P`); `_post_cmdline`/`_post_loader` pass `true` (sdboot regen only — cmdline/loader.conf are not initramfs inputs).
-  - Notify-only handlers: `_post_logind` (restarting logind kills sessions → reboot), `_post_modprobe` (load-time options can't live-apply → reboot), `_post_envd`/`_post_mangohud` (session/next-launch).
-  - `_post_nm` DEFERS the NetworkManager restart when WiFi is the active route; confirm the deferred restart still lands (Phase 6) and is surfaced.
-  - All destinations + `--install-file` values are canonicalized via `realpath -m` at load (realpath-fail warns, falls back to the literal path) — managed-file matching is canonical-path based.
-  - Unmatched patterns log `POST_HOOK_NONE` (deployed, live-apply skipped) vs `POST_HOOK_SKIP_UNCHANGED` (bytes identical); `_post_udev` runs `udevadm verify` (systemd ≥254) before reload+retrigger (block AND cpu).
-
-## B. Exact rendered file bodies (validate content, not summary)
-
-### B1. `/etc/kernel/cmdline` + `/etc/sdboot-manage.conf` + `/etc/mkinitcpio.conf`
-
-```
-rw root=UUID=<_ROOT_UUID> 8250.nr_uarts=0 amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 nowatchdog nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off tsc=reliable usbcore.autosuspend=-1 zswap.enabled=0
-```
-sdboot-manage.conf:
 ```
 # sdboot-manage configuration — changes require: sudo sdboot-manage gen && sudo sdboot-manage update
-LINUX_OPTIONS="<KERNEL_PARAMS join>"
+LINUX_OPTIONS="8250.nr_uarts=0 amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 nowatchdog nvme_core.default_ps_max_latency_us=0 pcie_aspm=off processor.max_cstate=1 quiet split_lock_detect=off tsc=reliable usbcore.autosuspend=-1 zswap.enabled=0"
 LINUX_FALLBACK_OPTIONS="quiet"
 DEFAULT_ENTRY="manual"
 REMOVE_EXISTING="yes"
 OVERWRITE_EXISTING="yes"
 REMOVE_OBSOLETE="yes"
 ```
-mkinitcpio.conf:
 ```
 # mkinitcpio configuration — changes require: sudo mkinitcpio -P && sudo sdboot-manage update
 MODULES=(amdgpu)
@@ -393,10 +383,12 @@ HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block 
 COMPRESSION="zstd"
 COMPRESSION_OPTIONS=(-1 -T0)
 ```
-- **`clearcpuid=umip` ships in BOTH bootloader paths** (`/etc/kernel/cmdline` + `LINUX_OPTIONS`). Confirm the two aren't simultaneously active in conflict; state which CachyOS drives and whether maintaining both is redundant or a divergence risk.
-- **`LINUX_FALLBACK_OPTIONS="quiet"` strips ALL params from the fallback entry:** a fallback boot runs kernel-default IOMMU (AMD-Vi ON) AND IPv6 ENABLED with the IPv4-only ruleset not covering it. The modprobe `amdxdna` blacklist (a modprobe.d file) REMAINS active in fallback, so the NPU stays off there — note the asymmetry vs the main entry. Confirm the fallback-only IPv6 exposure window is accepted or flag it.
+- `clearcpuid=umip` (and every token) ships in BOTH bootloader paths — confirm no conflict and state which one CachyOS drives.
+- Fallback entry strips ALL params (B1 exposure: kernel-default IOMMU + IPv6 on; amdxdna blacklist remains) — §7.
 
-### B2. `/boot/loader/loader.conf`
+Scalar map: `root=UUID` ⇐ `_ROOT_UUID` (machine-specific — placeholder retained) · `LINUX_OPTIONS` ⇐ `KERNEL_PARAMS` join (literal above).
+
+### B2. /boot/loader/loader.conf
 ```
 # systemd-boot loader configuration
 default @saved
@@ -404,9 +396,9 @@ timeout 0
 console-mode keep
 editor no
 ```
-- `@saved` + timeout 0 + editor no: confirm `@saved` resolves; failed-boot menu reachability vs live-USB recovery. loader.conf changes regenerate sdboot entries only.
+- Confirm `@saved` resolves; failed-boot menu reachability vs live-USB recovery; loader.conf changes regenerate entries only.
 
-### B3. `/etc/nftables.conf` (IPv4-only ruleset — validate rule-by-rule)
+### B3. /etc/nftables.conf (validate rule-by-rule)
 ```
 #!/usr/bin/nft -f
 # ry-install: default-deny-inbound, IPv4-only (ufw masked; ipv6.disable=1). Add inbound ports below.
@@ -419,7 +411,7 @@ table inet filter {
         ct state invalid drop
         # IPv4 ICMP: inbound ping (echo-request) + error/PMTUD types (replies match ct established)
         icmp type { echo-request, destination-unreachable, time-exceeded, parameter-problem } accept
-        # [IFF RY_REMOTE_PLAY_PORTS=true — gated block ships with its own marker comment:]
+        # [IFF RY_REMOTE_PLAY_PORTS=true:]
         # ry-install: remote-play inbound (RY_REMOTE_PLAY_PORTS=true)
         tcp dport { 47984, 47989, 48010, 27036, 27037 } accept
         udp dport { 47998-48010, 27031-27036 } accept
@@ -428,24 +420,23 @@ table inet filter {
     chain output { type filter hook output priority filter; policy accept; }
 }
 ```
-- **Deploy-time `nft -c -f <tmpfile>` gate:** a rendered ruleset failing syntax check refuses deploy with live+installed unchanged (`NFT_PREVALIDATE_FAIL`); `_post_nft` re-validates the installed file before `systemctl restart nftables` and downgrades a restart failure to "applies at next boot" (warn). Confirm the check-then-load pair is same-binary-consistent and the degraded path is surfaced.
-- IPv4-ONLY: no `ip6`/`icmpv6` types; safe only under the `ipv6.disable=1` coupling. Rule order lo → established/related → invalid-drop cannot drop valid loopback/established. `echo-request` accept is the regression guard; `destination-unreachable` preserves PMTUD; no echo-reply rule (ct established covers). `flush ruleset` blast radius vs docker/libvirt/podman. No ICMP/new-conn rate-limit — acceptable on a trusted LAN?
+- Rule order lo → established/related → invalid-drop cannot drop valid traffic; echo-request accept is the regression guard; destination-unreachable preserves PMTUD; `flush ruleset` blast radius vs docker/libvirt/podman; no rate limit (trusted LAN — state it); `nft -c` pre-commit + `_post_nft` re-validate close the malformed-ruleset window (same-binary check-then-load); restart failure surfaces as applies-at-boot warn.
 
-### B4. udev `99-ry-perf.rules` (3 rules; GPU matcher `ENV{DEVTYPE}`)
+### B4. /etc/udev/rules.d/99-ry-perf.rules
 ```
 # ry-install: udev performance rules (managed file, do not edit by hand)
 # NVMe scheduler none (lowest tail latency; diverges from CachyOS kyber default)
 ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ENV{DEVTYPE}=="disk", ATTR{queue/scheduler}="none"
 # AMD P-State EPP balance_performance (perf-leaning CPPC hint)
-ACTION=="add|change", SUBSYSTEM=="cpu", KERNEL=="cpu[0-9]*", ATTR{cpufreq/energy_performance_preference}="<EPP_PREFERENCE>"
+ACTION=="add|change", SUBSYSTEM=="cpu", KERNEL=="cpu[0-9]*", ATTR{cpufreq/energy_performance_preference}="balance_performance"
 # GPU performance level (gfx1151 clock-floor; optional)
-ACTION=="add", KERNEL=="card[0-9]*", SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", DRIVERS=="amdgpu", ATTR{device/power_dpm_force_performance_level}="<GPU_DPM_LEVEL>"
+ACTION=="add", KERNEL=="card[0-9]*", SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", DRIVERS=="amdgpu", ATTR{device/power_dpm_force_performance_level}="auto"
 ```
-- **GPU rule:** bare `DEVTYPE` is not a udev match key; the pre-v7.94/95 rule NEVER APPLIED (net-nil only because auto = kernel default). Confirm the rule now matches at enumeration; it remains `add`-only (no re-assert after GPU reset — a robustness argument for `auto`).
-- **EPP rule value from `$EPP_PREFERENCE`** (enum-gated `_RY_EPP_LEVELS`; unquoted ATTR interpolation bounded by the enum). `_post_udev` retriggers cpu+block so it live-applies; `udevadm verify` gates the reload on systemd ≥254.
-- Filename 99- sorts after vendor 60-ioschedulers.rules (last ATTR wins); confirm CachyOS still defaults kyber.
+- GPU rule is `add`-only (no re-assert after GPU reset — robustness argument for `auto`); EPP value enum-bounded; filename 99- sorts after vendor 60-ioschedulers.rules (last ATTR wins) — confirm CachyOS still defaults kyber.
 
-### B5. `/etc/systemd/resolved.conf.d/99-cachyos-resolved.conf`
+Scalar map: EPP ⇐ `EPP_PREFERENCE` (=balance_performance) · DPM ⇐ `GPU_DPM_LEVEL` (=auto) — literals above are the rendered defaults.
+
+### B5. /etc/systemd/resolved.conf.d/99-cachyos-resolved.conf
 ```
 # systemd-resolved: plaintext DNS, mDNS/LLMNR off (diverges from CachyOS DoH default)
 [Resolve]
@@ -454,9 +445,9 @@ LLMNR=no
 DNSOverTLS=no
 DNSSEC=allow-downgrade
 ```
-- Same-basename replace (not merge) caution: if CachyOS ships its own `99-cachyos-resolved.conf`, this REPLACES it — confirm intended, not a clash a vendor update re-overwrites. Restarts skipped when bytes unchanged. §10 privacy flag stands.
+- Same-basename replace (not merge) caution if CachyOS ships the identical filename; restarts skipped when bytes unchanged; §11 privacy flag stands.
 
-### B6. NetworkManager `99-cachyos-nm.conf` + dispatcher `logging.conf`
+### B6. NetworkManager 99-cachyos-nm.conf + dispatcher logging.conf
 ```
 # NetworkManager configuration - wpa_supplicant backend
 [device]
@@ -467,18 +458,21 @@ wifi.powersave=2
 
 [logging]
 level=WARN
-```
-dispatcher: `# LogLevelMax drops info-level dispatcher lines (journald-logged; StandardError=null ineffective)` + `[Service]` + `LogLevelMax=notice`.
-- Same basename-override caution as B5. Confirm LogLevelMax=notice remains the correct journald-noise fix.
 
-### B7. `/etc/iw-regdomain`
+# LogLevelMax drops info-level dispatcher lines (journald-logged; StandardError=null ineffective)
+[Service]
+LogLevelMax=notice
+```
+- Same basename-override caution as B5; confirm LogLevelMax=notice remains the correct journald-noise fix.
+
+### B7. /etc/iw-regdomain
 ```
 # ry-install: wireless regulatory domain (managed file, do not edit by hand)
 COUNTRY=US
 ```
-- **Persistence dependency (most version-fragile external):** confirm `cachyos-iw-set-regdomain` (or its successor) still exists in current CachyOS and reads this file at boot; if dropped, the file is inert and the profile must switch mechanisms. Reserved/user-assigned ISO codes rejected at preflight.
+- Most version-fragile external: confirm `cachyos-iw-set-regdomain` (or successor) still exists and reads this file at boot; if dropped, the file is inert and the profile must switch mechanisms.
 
-### B8. `/etc/bluetooth/main.conf` + `/etc/default/cpupower-service.conf`
+### B8. /etc/bluetooth/main.conf + /etc/default/cpupower-service.conf
 ```
 # ry-install: BlueZ daemon config (managed file, do not edit by hand)
 [General]
@@ -488,14 +482,13 @@ FastConnectable=true
 AutoEnable=true
 ReconnectAttempts=3
 ```
-cpupower-service.conf:
 ```
 # cpupower-service.conf — sourced by /usr/lib/systemd/scripts/cpupower (cpupower.service)
 GOVERNOR='powersave'
 ```
-- **The consumer path is stated in-file** (`/usr/lib/systemd/scripts/cpupower`). Single verify: confirm that script path + `GOVERNOR` var name on current CachyOS cpupower packaging (if moved, the file is inert and the governor falls to kernel default; the udev EPP rule still applies). `_vrsv_chk_cpupower_governor` asserts the running governor.
+- Single verify: that consumer script path + `GOVERNOR` var name on current CachyOS cpupower packaging (if moved, the file is inert and the governor falls to kernel default; the udev EPP rule still applies). `_vrsv_chk_cpupower_governor` asserts the running governor.
 
-### B9. `~/.config/MangoHud/MangoHud.conf` (19 active + 1 commented + 1 file-header)
+### B9. ~/.config/MangoHud/MangoHud.conf (19 active + 1 commented + file header)
 ```
 # ry-install: MangoHud readout-only HUD (managed file, do not edit by hand)
 horizontal
@@ -519,135 +512,101 @@ font_size=20
 text_outline
 background_alpha=0.4
 ```
-- Byte-exact checks must use the full commented string (prefix greps unchanged). `cpu_power` remains the live target (§12); the file-header is not a directive.
+Parity vs companion `mangohud-gtr9-pro` v1.17.0 `MangoHud.conf` (measured): identical except line 1 (repo identity header) and the `# cpu_temp` comment wording — all 19 active directives byte- and order-identical.
 
-### B10. `/etc/modprobe.d/60-ry-modules.conf` (merged destination, v7.99.0)
+### B10. /etc/modprobe.d/60-ry-modules.conf (CHANGED 7.102.x — amdxdna-only)
+Default (`BLACKLIST_AMDXDNA=true`):
 ```
 # ry-install: module options + blacklist (managed file, do not edit by hand)
-# disable PCIe ASPM on MT7925 (coredump/BT-reconnect/assoc mitigation; drop when upstream fixes)
-options mt7925e disable_aspm=1
-# [IFF BLACKLIST_AMDXDNA=true (default):]
 # blacklist amdxdna: XDNA NPU needs IOMMU, probes -EINVAL (ret -22) under amd_iommu=off
 blacklist amdxdna
 ```
-- Replaces `60-ry-mt7925e.conf` + the interim `60-ry-blacklist-amdxdna.conf`; pre-7.99 installs carry stale unmanaged copies until the README's one-time `sudo rm`. The conditional block renders ONLY under the default-true toggle; `BLACKLIST_AMDXDNA=false` (validator-coupled to the IOMMU being ON) yields a 3-line file. `_vss_modprobe` asserts the static content; `_vrkm_blacklist_modprobe` asserts amdxdna is NOT loaded. **The leftover-detection gap (§8) is the residual open item: `_vrkm_blacklist_modprobe` is generator-sourced, so a pre-7.99 leftover drop-in is invisible to it and to every verify path.**
+NPU path (`BLACKLIST_AMDXDNA=false`, validator-coupled to IOMMU on):
+```
+# ry-install: module options + blacklist (managed file, do not edit by hand)
+# no directives: BLACKLIST_AMDXDNA=false (NPU path) and MT7925 ASPM now covered by pcie_aspm=off
+```
+- `_grep_modprobe_entry` accepts a comment-only file (7.102.x); `_vss_modprobe` greps the blacklist only when default-true; `_vrkm_blacklist_modprobe` asserts amdxdna NOT loaded. **The §6 leftover gap applies here: generator-sourced checks cannot see stale pre-7.99 drop-ins, and no README guard remains.**
 
-## C. Verify subsystem (`--verify`) — orchestrator families
+### B11. /etc/systemd/logind.conf.d/99-cachyos-logind.conf (LOGIND_IGNORE_KEYS 8)
+```
+# systemd-logind configuration - desktop power handling
+[Login]
+HandlePowerKey=ignore
+HandlePowerKeyLongPress=ignore
+HandleSuspendKey=ignore
+HandleSuspendKeyLongPress=ignore
+HandleHibernateKey=ignore
+HandleHibernateKeyLongPress=ignore
+HandleRebootKey=ignore
+HandleRebootKeyLongPress=ignore
+```
 
-The top VERIFY block is the user-facing command set; `--verify` runs orchestrators across sub-families. A recommendation that changes a value MUST state which sub asserts it (hard-fail vs warn). Re-derived from v7.101.0 (289 fns). The three v7.91.0-flagged stale `--description` strings and the v7.99.1 runtime-session string are all now FIXED.
+### B12. /etc/sysctl.d/95-ry-overrides.conf (SYSCTL_VALUES 10 — §3/§6)
+```
+# ry-install sysctl tunables (priority 95 — loaded after CachyOS vendor 70-cachyos-settings.conf)
+net.core.default_qdisc = fq
+net.core.netdev_budget = 600
+net.core.netdev_budget_usecs = 5000
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_notsent_lowat = 16384
+net.ipv4.tcp_slow_start_after_idle = 0
+vm.compaction_proactiveness = 0
+vm.max_map_count = 2147483642
+vm.swappiness = 150
+vm.watermark_boost_factor = 0
+```
 
-**Static (on-disk) — orchestrators + syntax + checksum:**
-- `_verify_static_boot` → `_vsb_loader` · `_vsb_sdboot` (LINUX_OPTIONS token set + keys) · `_vsb_cmdline` (`/etc/kernel/cmdline` token set — `amd_iommu=off`/`ipv6.disable=1`/`clearcpuid=umip`/`tsc=reliable` byte-asserted here) · `_vsb_mkinitcpio` (HOOKS/MODULES + LIVE `COMPRESSION=` + `COMPRESSION_OPTIONS` via `_ry_mkinitcpio_array`, multi-line join, last-wins with a warn) · `_vsb_entries` (BLS entries + count). All hard-fail.
-- `_verify_static_system` (description names: resolved, logind, NM, regdom, bluetooth, cpupower-service.conf, sysctl, udev, modprobe, nftables) → `_vss_logind` · `_vss_nmdispatch` · `_vss_nm` · `_vss_sysctl` · `_vss_regdom` · `_vss_bluetooth` · resolved (inline `_chk_grep` loop) · cpupower-service.conf (inline `_chk_grep GOVERNOR`) · `_vss_udev` (all 3 rules; EPP from `$EPP_PREFERENCE`; GPU_DPM_LEVEL-aware) · `_vss_modprobe` (merged file: mt7925e `disable_aspm=1` + optional amdxdna blacklist) · `_vss_nft` (hard-fail on missing `echo-request` — inbound-ping regression guard; IPv4-only).
-- `_verify_static_user` — ENV_VARS (env.d, `_chk_grep` per var) + MangoHud (inline `_chk_file` + `_chk_grep "fps"`). `_chk_grep` is comment-proof: awk strips inline comments and skips comment-only lines before the `grep -wF` match — a commented-out `key=value` can no longer satisfy presence; "no non-comment lines" is a distinct FAIL; a mid-read sudo lapse is a distinct warn.
-- `_verify_static_packages` → `_vsp_required` (PKGS_ADD 18 + folded Vulkan pkgs, pacman-db-lock guard) · `_vsp_removed` · `_vsp_pacman_conf` (sudo-read fallback for a 0600-hardened pacman.conf; grep rc>1 → warn-skip; rc 1 + sudo-lapse → warn-skip — never a false "not set") · `_verify_static_services` (MASK 12 state) · `_verify_static_syntax` (live mkinitcpio HOOKS presence) · `_verify_static_checksum` → `_vsc_check_one` per file (embedded SHA256 == installed; graceful skip on `EXIT_GEN_NOUUID`). Every body carries a header-comment line and mkinitcpio carries `BINARIES=()`/`FILES=()` — embedded and installed move together; any out-of-band byte comparison must use the §B bodies.
-- **Config-format validators (`_ry_validate_configs` → `_rvc_dispatch`, pre-deploy):** `_grep_kv`, `_grep_kparam`, `_grep_sysctl_kv`, `_grep_modprobe_entry`, `_grep_regdomain_entry`, `_grep_udev_entry`, `_grep_nft_entry`, `_grep_envd_entry`, `_grep_cpupower_entry`, `_grep_mangohud_entry`, `_grep_ini_header` fallback; the mkinitcpio case REQUIRES `MODULES=(`, `HOOKS=(`, and `COMPRESSION="` lines. `_ry_validate_mkinitcpio_hooks` (`_vmh_existence_only` + `_vmh_order_checks`) + `_ry_validate_mkinitcpio_modules` validate the arrays — `_vmh_*` are mkinitcpio validators, NOT MangoHud. nftables.conf additionally passes `nft -c -f` on the rendered tmpfile before commit.
+### B13. ~/.config/environment.d/10-environment.conf (ENV_VARS 12 — §1; 0600)
+```
+# Environment for systemd --user services and graphical sessions (Plasma, Flatpak, D-Bus apps)
+AMD_VULKAN_ICD=RADV
+DXVK_LOG_LEVEL=none
+DXVK_LOG_PATH=none
+MANGOHUD=1
+MESA_SHADER_CACHE_MAX_SIZE=16G
+PROTON_ENABLE_WAYLAND=1
+PROTON_FSR4_RDNA3_UPGRADE=1
+PROTON_LOCAL_SHADER_CACHE=1
+VKD3D_CONFIG=descriptor_heap
+VKD3D_DEBUG=none
+VKD3D_SHADER_DEBUG=none
+WINEDEBUG=-all
+```
 
-**Runtime-kernel — `_verify_runtime_kparams`** (description: "/proc/cmdline, hardware state, module params, blacklist"):
-- Preemption INFO scaffold: caches `sudo -n dmesg` once, INFO-only, erased after.
-- `_vrk_cmdline` — generic loop asserting EVERY KERNEL_PARAMS token + `rw` in `/proc/cmdline` + preemption INFO.
-- `_vrk_gpu_state` — `power_dpm_force_performance_level == $GPU_DPM_LEVEL` across `card*` (comparison QUOTED — empty sysfs reads can't mis-evaluate).
-- `_vrk_cpu_state` — scaling_driver=`$EXPECTED_SCALING_DRIVER` · scaling_governor=`$CPUPOWER_GOVERNOR` · EPP=`$EPP_PREFERENCE` · amd_pstate status · `dynamic_epp=disabled` · prefcore · boost=1 (expectations hoisted globals).
-- `_vrk_module_state` → `_vrkm_amdgpu` (hex-aware; no-ops without `amdgpu.*`) · `_vrkm_blacklist` (`module_blacklist=` cmdline scan — currently no-op) · `_vrkm_blacklist_modprobe` (parses `blacklist <mod>` from the MANAGED modprobe.d content, normalizes `-`→`_`, `lsmod`-checks each — amdxdna LOADED ⇒ FAIL; `lsmod` absent ⇒ warn; generator failure defers to checksum verify) · usbcore.autosuspend, nvme_core ps_max_latency, zswap.enabled, nmi_watchdog, NVMe `[none]`. `_vrkm_iommu`/`_vrk_clocksource` remain removed (directives still cmdline-asserted).
+# Appendix C — verify surface (assert ownership per recommendation)
 
-**Runtime-services — `_verify_runtime_services`:** `_vrsv_chk_active_enabled` · `_vrsv_nft_assert_ping` (live input chain accepts inbound IPv4 ping; warn-only) · `_vrsv_chk_nftables` (oneshot judged by live policy-drop) · `_vrsv_chk_resolved` · `_vrsv_chk_cpupower_governor` · `_vrsv_sys_units` · `_vrsv_wifi_nm_backend` · `_vrsv_wifi` · `_vrsv_masked_inactive` (covers the avahi pair). `_vrsv_wifi` contains no iwd path: it skips when `_RY_PROFILE_USES_WIFI_BACKEND=false`, detects the wlan iface via `/sys/class/net/*/wireless`, calls `_vrsv_wifi_nm_backend`, reads nmcli radio/device state, and closes with a firewall-posture INFO line (ufw active-state + live nft rule count). Residual iwd coverage = the backend compare only; an iwd opt-in host has lost the process cross-check — a narrow, deliberate coverage reduction (Low/Low).
+A recommendation that changes a value MUST state which sub asserts it (hard-fail vs warn).
 
-**Runtime-env — `_verify_runtime_env`** (description: "ENV_VARS, sysctl, fstab, ntsync, regdom runtime"): `_vre_envvars` (`systemctl --user show-environment`) · `_vre_sysctl_runtime` (`/proc/sys`) · `_vre_fstab` (ext4 `noatime,lazytime,commit=10`) · `_vre_ntsync` (state dispatch — survives) · `_vre_regdom` (`iw reg get`). `_vre_tcp`/`_vre_zram` remain removed.
+- **Static boot** `_verify_static_boot` → `_vsb_loader` · `_vsb_sdboot` (LINUX_OPTIONS token set + keys) · `_vsb_cmdline` (/etc/kernel/cmdline token set — amd_iommu=off / ipv6.disable=1 / clearcpuid=umip / pcie_aspm=off / tsc=reliable byte-asserted here) · `_vsb_mkinitcpio` (HOOKS/MODULES + live COMPRESSION/_OPTIONS via `_ry_mkinitcpio_array`, multi-line join, last-wins warn) · `_vsb_entries` (BLS entries + count; loader-entry paths realpath-canonicalized, WARNED textual-join downgrade when realpath absent). All hard-fail.
+- **Static system** `_verify_static_system` → `_vss_logind` · `_vss_nmdispatch` · `_vss_nm` · `_vss_sysctl` · `_vss_regdom` · `_vss_bluetooth` · resolved inline `_chk_grep` loop · cpupower inline `_chk_grep GOVERNOR` · `_vss_udev` (all 3 rules; EPP from `$EPP_PREFERENCE`; GPU_DPM-aware) · `_vss_modprobe` (blacklist grep iff default-true) · `_vss_nft` (hard-fail on missing echo-request).
+- **Static user** — ENV_VARS per-var `_chk_grep` + MangoHud `_chk_file` + `_chk_grep "fps"`. `_chk_grep` is comment-proof (awk strips inline comments, skips comment-only lines before `grep -wF`); "no non-comment lines" is a distinct FAIL; mid-read sudo lapse is a distinct warn.
+- **Static packages** → `_vsp_required` (PKGS_ADD 18 + Vulkan, pacman-db-lock guard) · `_vsp_removed` · `_vsp_pacman_conf` (sudo-read fallback; grep rc>1 → warn-skip) · `_verify_static_services` (MASK 12) · `_verify_static_syntax` · `_verify_static_checksum` → `_vsc_check_one` (embedded SHA256 == installed; graceful skip on EXIT_GEN_NOUUID).
+- **Pre-deploy format validators** (`_ry_validate_configs` → `_rvc_dispatch`): `_grep_kv`, `_grep_kparam`, `_grep_sysctl_kv`, `_grep_modprobe_entry` (comment-only OK; else every non-comment line ∈ options/blacklist/install/alias/softdep/remove), `_grep_regdomain_entry`, `_grep_udev_entry`, `_grep_nft_entry`, `_grep_envd_entry`, `_grep_cpupower_entry`, `_grep_mangohud_entry`, `_grep_ini_header`; mkinitcpio case REQUIRES `MODULES=(`, `HOOKS=(`, `COMPRESSION="` lines; `_vmh_*` = mkinitcpio hook validators (NOT MangoHud); nftables additionally `nft -c -f` on the rendered tmpfile.
+- **Runtime kernel** `_verify_runtime_kparams`: `_vrk_cmdline` (every token + rw; preemption INFO from one cached `sudo -n dmesg`) · `_vrk_gpu_state` (QUOTED compare) · `_vrk_cpu_state` (driver/governor/EPP/status/dynamic_epp/prefcore/boost) · `_vrk_module_state` → `_vrkm_amdgpu` (hex-aware, no-op without amdgpu.*) · `_vrkm_blacklist` (module_blacklist= cmdline scan — currently no-op) · `_vrkm_blacklist_modprobe` (managed-content parse, `-`→`_` normalize, lsmod check; amdxdna LOADED ⇒ FAIL; lsmod absent ⇒ warn) · usbcore/nvme_core/zswap/nmi_watchdog/NVMe-none asserts.
+- **Runtime services** `_verify_runtime_services`: `_vrsv_chk_active_enabled` · `_vrsv_nft_assert_ping` (warn) · `_vrsv_chk_nftables` (oneshot judged by live policy drop) · `_vrsv_chk_resolved` · `_vrsv_chk_cpupower_governor` · `_vrsv_sys_units` · `_vrsv_wifi_nm_backend` · `_vrsv_wifi` (no iwd path; skips when `_RY_PROFILE_USES_WIFI_BACKEND=false`; wlan via /sys/class/net/*/wireless; closes with firewall-posture INFO) · `_vrsv_masked_inactive` (covers the avahi pair).
+- **Runtime env** `_verify_runtime_env`: `_vre_envvars` (systemctl --user show-environment) · `_vre_sysctl_runtime` (/proc/sys) · `_vre_fstab` (ext4 noatime,lazytime,commit=10) · `_vre_ntsync` · `_vre_regdom` (iw reg get).
+- **Runtime session** `_verify_runtime_session`: `_vrs_nm_perms` (0600 root:root) · `_vrs_installed_file_perms` (system 0644 / user 0600) · `_vrs_parent_dirs` → `_vpd_dir_perm_check` (0755/0700); `_vrs_vfat_skip` guards BOTH loops (vfat/undetermined $BOOT counted-skipped with INFO).
+- **Aggregation** `_ry_verify_all`/`_verify_summary`: static first, runtime second; per-stage summaries summed; runtime preflight bail restores static totals; a static FAIL outranks the runtime bail code. Confirm no path zeroes static counters after a runtime bail.
+- **Actionables:** (a) leftover-file blindness of `_vrkm_blacklist_modprobe` (§6 — CONFIRMED, now unguarded); (b) COMPRESSION multi-line/duplicate tolerance without false FAIL; (c) comment-strip safety holds while no managed value contains `#` (boot-scalar metachar gate forbids it) — re-check on any new value; (d) removed effect-asserts leave directive-level coverage intact; iwd narrowing deliberate (Low/Low).
 
-**Runtime-session — `_verify_runtime_session`** (description FIXED — "NM connection perms, installed-file perms, parent dirs"): `_vrs_nm_perms` (system-connections 0600 root:root) · `_vrs_installed_file_perms` (system 0644 / user 0600) · `_vrs_parent_dirs` → `_vpd_dir_perm_check` (0755 system / 0700 user). `_vrs_vfat_skip` guards BOTH loops (vfat/undetermined `$BOOT` paths are counted-skipped with an INFO, not silently passed). The v7.99.1 "Vulkan packages" stale string is now removed.
+# Appendix D — fstab rewrite (`_install_fstab_opts`)
 
-**Aggregation (`_ry_verify_all` / `_verify_summary`):** static runs first (boot → system → user → packages → services → syntax → checksum), runtime second; each stage prints its own `_verify_summary` and `_ry_verify_all` sums the counters. A runtime preflight bail (sudo lapse) restores the static totals, and a static FAIL outranks the runtime bail code — the exit reflects the worse finding. Confirm no path zeroes the static counters after a runtime bail.
+- Adds `noatime,lazytime,commit=10` to ext4 field 4 only; every other column and non-ext4 row byte-preserved; purely-numeric $4 rows pass through to the malformed guard — confirm they are then caught, not shipped.
+- Verify-side conflict list exact: `defaults`, `relatime`, `atime`, `strictatime` (presence = rewrite-pending FAIL); existing `commit=` rewritten to 10; non-10 overrides tracked in `_RY_FSTAB_COMMIT_OVERRIDES` (surfaced).
+- Gates: line-count parity + size floor + mandatory `findmnt --verify`; symlinked or whitespace-split /etc/fstab refused, not corrected.
+- Confirm: ext4-only (not vfat ESP / btrfs / xfs); idempotent; atomic (tmp+rename, `.ry.bak`); commit=10 vs every-boot fsck coherence (§4).
 
-**Actionable for §C:**
-- Confirm `_vrkm_blacklist_modprobe` closes the amdxdna live gap correctly (generator-sourced — checks the INTENDED blacklist, so a pre-7.99 leftover drop-in is invisible; §8/§B10 — CONFIRMED gap); confirm the `-`→`_` normalization and warn-on-no-lsmod.
-- Confirm the live COMPRESSION/_OPTIONS compare tolerates vendor multi-line arrays (join) and duplicate assignments (last-wins warn) without false FAILs.
-- Comment-strip false-negative closure: no managed value contains ` #` and the boot-scalar metachar gate FORBIDS `#`, so the greedy strip cannot bite a legitimate value; re-check if a future value adds `#`.
-- Confirm the removed effect-asserts leave no coverage gap that matters (directive-level coverage holds); the iwd narrowing is deliberate and flagged.
-- `_vsb_entries` canonicalization: loader-entry `linux` paths resolve via `realpath -m` with a WARNED textual-join downgrade when realpath is absent — confirm the downgrade is loud enough.
+# Appendix E — preflight gates & exit codes
 
-## D. fstab rewrite (`_install_fstab_opts`) — normalization, not just append
+Init-time capability probes FIRST: `id` (hard-require, non-numeric `id -u` refuses) → `timeout --foreground --kill-after` → `find -maxdepth/-printf` → `mv -T` live-probe (two mktemp files, /tmp — vfat semantics untested by design) → `stat` → `date %z`; each rejects busybox/uutils (exit 3). TMPDIR erased (tmp pinned /tmp); umask set as the VARIABLE; `--check` silence pinned pre-argparse. Dependency gate: 33-command GNU set + `df --output` probe + systemd ≥250; optional tools warn-listed. Destinations canonicalized (`realpath -m`, literal fallback).
 
-- Adds `noatime,lazytime,commit=10` to ext4 entries (field 4 only); every other column and non-ext4 row byte-preserved. An ext4 row whose options field is purely numeric (`$4 ~ /^[0-9]+$/`) passes through untouched — a malformed-column guard; confirm such a row is then caught by the malformed-filter/refusal path rather than silently shipped.
-- Strips conflicting tokens — the verify-side conflict list is exact: **`defaults`, `relatime`, `atime`, `strictatime`** (presence = "installer removes it — rewrite pending" FAIL); an existing `commit=` is rewritten to `commit=10`, and non-10 values are tracked in `_RY_FSTAB_COMMIT_OVERRIDES` (surfaced, not silently replaced).
-- Gates: line-count parity + size floor + mandatory `findmnt --verify`. Refused (not corrected): symlinked or whitespace-split/malformed `/etc/fstab`.
-- Confirm: (a) ext4-only (not the vfat ESP, not btrfs/xfs); (b) idempotent; (c) atomic (tmp+rename, `.ry.bak` taken); (d) `commit=10` durability vs every-boot forced fsck (§3).
+- `_ir_resolve_root_uuid` → EXIT_GEN_NOUUID 12; mode-scoped: `--install-file` FATAL only when target IS /etc/kernel/cmdline; else warn-continue; `--verify` warn-continues with generic root=UUID check.
+- Hardware gate (CPU match; sole override `RY_INSTALL_SKIP_HARDWARE_CHECK=1`; fail-closed unreadable; `--verify` warns).
+- `_ir_validate_counts` (21 tripwires) → `_ir_validate_keys` (bool/yes-no/int enums; ISO-3166 COUNTRY with reserved-range rejection; GPU_DPM ∈ `_RY_DPM_LEVELS`; EPP ∈ `_RY_EPP_LEVELS`; governor regex; nftables↔ipv6.disable coupling; BLACKLIST_AMDXDNA=false↔IOMMU-on coupling; non-empty scalars; boot-scalar metachar gate; MKINITCPIO_COMPRESSION_OPTIONS charset `^-?[A-Za-z0-9]+$`; KERNEL_PARAMS charset `^[A-Za-z0-9._,=-]+$`) → `_ir_validate_post_hooks`. **No kernel-floor validator exists.**
+- Confirm: (a) counts/keys run BEFORE any disk write; (b) bypass inventory is exactly ONE env; (c) `PACTREE_TIMEOUT_S=60`, `BOOT_SPACE_CRIT/WARN` 200/500 MB, `ROOT_AVAIL_CRIT/WARN` 2/5 GiB sane vs multiple kernels + fallback + zstd -1 image (§7).
 
-## E. Preflight gate ordering (`_init_runtime` / `_install_preflight` / `_ir_*`)
-
-Order matters for exit-code semantics. **Init-time capability probes run BEFORE everything else:** `id(1)` is the FIRST external command (hard-require; non-numeric `id -u` refuses); `timeout(1)` probed for `--foreground --kill-after`; `find(1)` probed for `-maxdepth`/`-printf`; `mv -T` live-probed via two mktemp files; `stat(1)`; `date(1)` `%z`-probed — each rejects busybox/uutils explicitly (exit 3). `TMPDIR` erased (tmp pinned `/tmp`); umask set as the variable directly; `--check` silence pinned pre-argparse. The dependency gate hard-requires a 33-command GNU set (pacman, systemctl, mkinitcpio, sdboot-manage, findmnt, sha256sum, timeout, mktemp, awk, grep, curl, getent, id, sudo, head, df, mv, tee, stat, find, cp, chmod, chown, install, cat, rm, date, wc, tail, basename, dirname, mkdir, rmdir, touch, env, sleep, cmp) plus a `df --output` probe, systemd ≥250, and warn-lists optional tools. All destinations canonicalized at load (`realpath -m`; failure falls back to the literal path).
-
-- `_ir_resolve_root_uuid` → `EXIT_GEN_NOUUID 12` if cmdline render finds no UUID. **Mode-scoped:** `--install-file` is FATAL only when the (canonicalized) target IS `/etc/kernel/cmdline` (the sole UUID-embedding file); any other target warn-continues; `--verify` warn-continues with a generic root=UUID presence check.
-- Hardware gate (CPU match; override `RY_INSTALL_SKIP_HARDWARE_CHECK=1`; fail-closed on unreadable model; `--verify` warns, deploy exits 3).
-- `_ir_validate_kernel_floor` (3) — ≥6.19, NO OVERRIDE; fail-closed on unreadable `uname -r`; `--verify` warns; deploy AND `--check` refuse.
-- `_ir_validate_counts` (3) — 21 tripwires (incl `_RY_ARGPARSE_SPEC:7`, `_RY_BACKUP_TARGETS:4`, `MKINITCPIO_COMPRESSION_OPTIONS:2`, `PKGS_ADD:18`, `MASK:12`).
-- `_ir_validate_keys` (3) — bool: BT_AUTO_ENABLE/BT_FAST_CONNECTABLE/RY_REMOTE_PLAY_PORTS/BLACKLIST_AMDXDNA; yes|no: SDBOOT_*/RESOLVED_MDNS/LLMNR/DOT; int: LOADER_TIMEOUT/NM_WIFI_POWERSAVE/BT_RECONNECT_ATTEMPTS; ISO-3166 COUNTRY incl reserved-range rejection; GPU_DPM_LEVEL ∈ `_RY_DPM_LEVELS`; EPP_PREFERENCE ∈ `_RY_EPP_LEVELS`; CPUPOWER_GOVERNOR `^[a-z][a-z0-9_-]*$`; the **nftables↔`ipv6.disable=1`** coupling; the **`BLACKLIST_AMDXDNA=false`↔IOMMU-required** coupling; non-empty scalar set (incl `EXPECTED_SCALING_DRIVER`); boot-scalar metachar gate (PCRE class with `\x27`) on MKINITCPIO_COMPRESSION/SDBOOT_DEFAULT_ENTRY/LOADER_*/CPUPOWER_GOVERNOR; `MKINITCPIO_COMPRESSION_OPTIONS` token charset `^-?[A-Za-z0-9]+$`; `KERNEL_PARAMS` token charset `^[A-Za-z0-9._,=-]+$`. Every validated scalar is an embedded value set unconditionally (`set -g`, no `set -q` guard) — exported env vars of the same name are clobbered.
-- `_ir_validate_post_hooks` (3) — every tag has a `_post_<tag>` handler; empty tags refuse.
-- Generator sentinels: 11/12/13/14; 250/251/255 never reach a process exit.
-- Advisories (non-fatal): mesa < 26.0 soft floor — `vercmp` presence-checked and output-validated `^-?\d+$` before compare.
-
-- Confirm: (a) counts/keys/floor run BEFORE any disk write; (b) the bypass inventory is exactly ONE (`RY_INSTALL_SKIP_HARDWARE_CHECK`); (c) `PACTREE_TIMEOUT_S` (60), `BOOT_SPACE_CRIT/WARN` (200/500 MB), `ROOT_AVAIL_CRIT/WARN` (2/5) remain sane vs multiple kernels + fallback + the `-1` zstd image (§4).
-
-## F. Prioritized open items (v7.101.0)
-
-Ranked by audit impact. The five items the v7.99.1 audit led with are resolved in-script (§0) and are NOT repeated here.
-
-1. **⚠ modprobe-leftover migration gap (only material open finding, Low/Low).** Superseded filenames have 0 in-script references; pre-7.99 leftovers are invisible to `_vrkm_blacklist_modprobe` (generator-sourced) and to every verify path; the README `sudo rm` note is the only guard. A stale `60-ry-blacklist-amdxdna.conf` keeps the NPU blacklisted after opt-in. ADD-check candidate (§8/§B10).
-2. **6.19 floor — verify the single remaining leg.** gfx1151 post-0x83 MES ≥6.19 is now the sole rationale; confirm against upstream and state per-subsystem floors (§1).
-3. **RTL8127 landing kernels — verify the ≤6.18 claim.** Cite the exact mainline releases for `f24f7b2f3af9` + `ae1737e7339b`; if either landed at 6.19+, the claim is FIX-doc and the floor regains a second leg (§11).
-4. **amdxdna blacklist + coupling (NEW mechanism).** Confirm `-EINVAL (ret -22)` current; blacklist-vs-alternatives; coupling asymmetry intended (true+IOMMU-on valid); NPU-off default acceptable (§10 #2).
-5. **MES label — verify post-0x83 is current-correct.** Now resolved in-script; confirm the shipping GC 11.5.1 MES revision matches (§1/§11).
-6. **Intentional trade-offs to quantify (not FIX):** `amd_iommu=off` DMA-isolation loss + NPU cost; `clearcpuid=umip` UMIP exposure; IPv6-off/ping-on/avahi-masked net delta; `split_lock_detect=off`; plaintext DNS.
-7. **UNCERTAIN evaluations pending upstream evidence:** `EPP_PREFERENCE` balance_performance→performance; `GPU_DPM_LEVEL` auto→high (both under the stated package budget); `PROTON_FSR4_RDNA3_UPGRADE=1` consumption.
-8. **Docs consistency:** every §6/§13 power call must name its assumed budget (85 W README vs 140 W stock).
-
----
-
-# Deepest-pass appendix (§G–§L) — robustness & correctness
-
-§1–§13 audit *what the profile configures*; §A–§F audit *what the script writes and asserts*. This layer audits *whether the installer is safe to run at all* — correctness, not tuning. Confirm each guarantee on current fish (3.6 floor) / CachyOS; flag any TOCTOU, fail-open, or partial-write window. Every mechanism is quoted from v7.101.0.
-
-## G. Atomic-write guarantees (`_awf_*`)
-
-Path per file: `_awf_render_to_tmp` → (nftables: `nft -c -f` tmpfile gate) → `_awf_symlink_check` → `_awf_finalize_mv`. Backup targets (4 boot-critical) add `_awf_make_backup` (pre) + `_awf_postwrite_verify_restore` (post).
-
-- **tee-to-tmp with `$pipestatus`:** generator piped into `_as $use_sudo tee`; `pipestatus[1]`/`[2]` checked separately, generator failures → `EXIT_GEN_*`. Builtin→pipe captures dropped (SIGPIPE) — confirm no probe still pipes a fish builtin into an external reader.
-- **Symlink-swap probe:** rc 0/1/2 = symlink/not/lapse, abort on swap — confirm the check→`mv -T` window is closed.
-- **`mv -T` rename:** chmod → `sudo -n true` re-assert → `mv -T`; tmp in dst's parent (same-FS). Capability live-probed at init on /tmp — `/boot` vfat rename semantics stand (probe runs on /tmp, not vfat). `_ry_mkdir_0755` caps parent creation at umask 0022.
-- **Post-write re-read + restore:** re-runs generator, compares bytes (tri-state rc), restores `.ry.bak` on mismatch across all 4 boot-critical files. Confirm generator determinism for all four (cmdline is UUID-dependent — `EXIT_GEN_NOUUID` skips gracefully); `string collect --no-trim-newlines --allow-empty` preserves trailing newlines.
-- **Non-backup files (nftables.conf et al.):** detect-only on mismatch (no auto-restore). Bounded by the `nft -c` gate (syntactically-broken can't deploy) but a semantically-wrong ruleset still can — confirm the residual posture is stated and accepted.
-
-## H. Instance lock & PID-recycle TOCTOU (`_acquire_lock*`, `_lock_pid_started_after`)
-
-Lock = atomic `mkdir "$LOCK_DIR"` (umask 0077, 0700) + pidfile via mktemp+`mv -Tf` (0600). Stale reclaim bounded (3 attempts), fail-closed. `_RY_LOCK_MKDIR_OK` set beside the rc capture — no window where the dir exists but ownership is unrecorded.
-
-- **PID-recycle detection:** `/proc/PID/stat` field 22 (starttime) + `/proc/stat` btime; divisor = `getconf CLK_TCK`, fallback USER_HZ=100 (correct by ABI — `starttime` is USER_HZ, fixed 100 on Linux, not the tick rate; the old `/proc/config.gz` recovery is gone, though `_kconfig_cache` survives for the `CONFIG_NTSYNC=y` check). Reclaim only if holder start > pidfile mtime + 2 s; unparseable ⇒ treat live, refuse; empty/garbage pidfile settles 0.2 s, re-reads, still garbage ⇒ refuse. Confirm the `^.*\) ` comm-strip survives `) ` in comm, field-22 indexing after it, and the +2 s slack.
-- **Re-read-before-rm guard:** pidfile re-read vs decision-time value before `rm -rf`; changed ⇒ abort. Symlinked `$LOCK_DIR` ⇒ refuse; `--preserve-root`. `kill -0` EPERM ⇒ `/proc` liveness, not reclaimed.
-- Fail-closed on every btime/starttime/CLK_TCK failure (the 100 fallback logs `LOCK_CLK_TCK_FALLBACK`).
-
-## I. Privilege handling (`_as`, `_run`, `_is_symlink`, `_installed_bytes`)
-
-- **`sudo -n` everywhere; prompt exactly once, TTY-gated:** cold cache on a TTY runs `sudo -v` once; non-TTY refuses ("pre-cache via 'sudo -v'") — no mid-run hang. Lapse banner names `timestamp_timeout=60`, a keepalive, or a SCOPED NOPASSWD drop-in (avoid ALL). Credential re-asserted before each critical write. Confirm the once-prompt cannot recur mid-run.
-- **Tri-state rc 0/1/2 (drift vs lapse):** `_is_symlink`, `_installed_bytes`, `_ry_content_bytes` return 2 for lapse; every caller must branch on rc 2 (a 2→1 collapse misreports lapse as drift). Audit all callers incl. `_vsp_pacman_conf`.
-- **`_run` timeout (floor, not exemption):** default 3600 s; >9-digit clamped to 2147483647; invalid → default; `0` disables. **Long ops (pacman, mkinitcpio, sdboot-manage, paccache, updatedb, pkgfile — PATH-resolved) FLOORED to `_RY_LONGOP_HARD_CAP=7200 s`** (raised when below, `TIMEOUT_LONGOP_CAP`; "short SIGKILL bypasses rollback"). The resolver skips the sudo value-flag set (`-h -u -g -p -C -D -R -T -U --user --group --prompt --close-from --chdir --chroot --command-timeout --other-user --host`), bare flags, `env`, `VAR=` prefixes before naming the command. `PACTREE_TIMEOUT_S` (60) governs pactree only. Confirm 7200 s covers worst-case `-Syu` and a cap-kill is fatal-with-rollback, not a silent skip. Capture hygiene: argv redacts `/tmp/ry-*` → `[REDACTED]`; on overflow, JSONL inlines bytes+sha256 then an awk scan of the elided middle for diagnostic keywords (≤10 hits, ≤2000 chars each; nothing on disk).
-
-## J. Boot-wipe gate & boot-critical rollback (`_irb_taint_gate`, `_install_rebuild_boot`)
-
-1. `_irb_taint_gate`: `_RY_BOOT_TAINTED=true` OR failed mkinitcpio.conf revert ⇒ SKIP `mkinitcpio -P`, exit 4. Taint set via the shared `_taint` helper (`INSTALL_HAD_ERRORS` + `_RY_BOOT_TAINTED` together) — confirm every boot-critical write-failure routes through it.
-2. `mkinitcpio -P` failure ⇒ abort, exit 4.
-3. `$BOOT` resolved BEFORE the vfat gate; unresolved OR non-vfat `/boot` + `REMOVE_EXISTING=yes` ⇒ refuse the wipe (exit 4) — never run `sdboot-manage` against an unverified target.
-4. `_preflight_boot_sanity`: vmlinuz + initramfs + entries must exist or exit 4.
-
-Confirm: (a) no path to `REMOVE_EXISTING=yes` with unverified `$BOOT`; (b) the Phase-3 cmdline-write vs Phase-5 rebuild window — a boot with new cmdline + old initramfs is covered by the param-stripped fallback (which re-enables IPv6 and kernel-default IOMMU; the modprobe amdxdna blacklist REMAINS active — B1 asymmetry); (c) `EXIT_BOOT_CRIT` is terminal (no Finalize after).
-
-**mkinitcpio rollback:** pre-`Syu` snapshot to `/run/ry-install` (0700, mktemp, tagged log line); on pacman failure `_mkinitcpio_revert` restores via same-`/etc`-FS mktemp + byte-exact `cmp` + atomic mv. Duplicate `KEY=` resolves last (matches `_ry_mkinitcpio_array`). Tmpfs snapshot is same-boot-only (acceptable). Flag if a pacman partial transaction can desync mkinitcpio.conf from installed modules without triggering revert.
-
-## K. Signal & exit teardown (`_cleanup`, `_teardown`, `_do_cleanup`)
-
-- **Signal handlers:** INT/TERM/HUP/QUIT/ABRT with 128+N re-raise; idempotent (`_CLEANUP_DONE`); SIGPIPE marks output broken, JSONL-only continues; `fish_exit` prefers `_INTENDED_EXIT_CODE` → `_RY_INSTALL_LAST_EXIT` → `$status`. JSONL `ts` from the single `_RY_TS_FMT` global via `command date`. **`--check` stderr-silence holds through the PRE-ARGPARSE window** (`_RY_ARGV_CHECK_ONLY` scanned before MODE exists; root + `--check`-only ⇒ silent exit 3; `-V`/`-VV` compatible; other flags restore exit-2) — confirm no early-init path (dep probes, log-dir failures) prints to stderr under a pure `--check` argv. **umask set as the VARIABLE directly** (the autoloaded `umask` function could leak "Unknown command" on a mid-autoload signal) — confirm fish ≥3.6 honors the variable form for children and `mkdir`.
-- **Cleanup order:** kill children → mkinitcpio revert → tmpfile sweep → filesystem sweep → lock release LAST → erase globals. Child reap: TERM to `-P $fish_pid` descendants, poll loop — 0.5 s grace normally, 10 s when db.lck exists — then KILL (descendants-only); missing pgrep degrades to flat 0.5 s. Signal→exit map explicit (HUP:129 INT:130 QUIT:131 TERM:143 ABRT:134; unknown → 130). `_RY_TMPDIR_GLOBS` (6, PID-scoped `ry-*.$fish_pid.*`): sudo-err, tee-err, run, argparse-err, fstab-tee-err, fstab-awk-err — confirm the glob set == the created set. `TMPDIR` erased at init (sweep and create targets can't diverge).
-- **Log lifecycle:** `mv -T` with `cp -pT` + `rm` recovery (dir-squat safe); both-fail keeps the old path (warn); symlinked LOG_FILE removed, re-created 0600. Root-guard refusal emits one `@@LEFT@@` per leftover positional + `@@IF@@` for the install-file value (display sentinels) — confirm they never leak unstripped.
-
-**Exit-code contract (14 distinct — audit for discipline, no bare `exit 1`):**
+Exit-code contract (audit for discipline — no bare `exit 1` collapsing 3/4/5/10):
 
 ```
 ║ CODE ║ NAME              ║ RAISED WHEN                        ║
@@ -659,28 +618,34 @@ Confirm: (a) no path to `REMOVE_EXISTING=yes` with unverified `$BOOT`; (b) the P
 ║ 4    ║ EXIT_BOOT_CRIT    ║ boot-critical rollback path        ║
 ║ 5    ║ EXIT_LOCK         ║ instance lock contention           ║
 ║ 10   ║ EXIT_DRIFT        ║ --check found drift                ║
-║ 11   ║ EXIT_GEN_NOFN     ║ generator fn not defined           ║
-║ 12   ║ EXIT_GEN_NOUUID   ║ root UUID unresolved in generator  ║
-║ 13   ║ EXIT_GEN_SYSCTL   ║ sysctl gen printed-count mismatch  ║
-║ 14   ║ EXIT_GEN_ENVD     ║ env.d gen printed-count mismatch   ║
-║ 250  ║ EXIT_AS_MISUSE    ║ _as w/o cmd or non-bool use_sudo   ║
-║ 251  ║ EXIT_RUN_TMPFAIL  ║ _run tmpfile create failed         ║
-║ 255  ║ EXIT_RUN_MISUSE   ║ _run no-args or dash-prefixed arg  ║
+║ 11-14║ EXIT_GEN_*        ║ internal gen sentinels (fn return) ║
+║ 250  ║ EXIT_AS_MISUSE    ║ internal _as assert                ║
+║ 251  ║ EXIT_RUN_TMPFAIL  ║ internal _run sentinel             ║
+║ 255  ║ EXIT_RUN_MISUSE   ║ internal _run assert               ║
 ```
 
-- Codes 11–14 internal (checksum verify maps NOUUID to graceful skip); 250/251/255 are BUG asserts that must never fire. Confirm no path collapses a structured code (3/4/5/10) into bare 1, and SIGKILL is the only cleanup bypass (stale-reclaim §H recovers a SIGKILLed holder).
+11–14/250/251/255 are annotated in-script as internal-only sentinels (never a process exit; checksum verify maps NOUUID to graceful skip). Confirm none can reach a process exit.
 
-## L. pacman transaction safety (`_ip_pacman_invoke`)
+# Appendices G–L — robustness & correctness (safety invariants; FIX applies normally)
 
-- **Full `-Syu --needed` only:** first `-Syu --needed --noconfirm`, retry `-Syyu --needed --noconfirm` (forced db re-sync; "will not resolve pkg conflicts"); second failure fatal. `SYSTEM_UPGRADED` from a `pacman -Q | sha256sum` fingerprint (identical ⇒ false + `PKG_STATE_UNCHANGED`; empty fails open to true). Post-`Syu` `-D --asexplicit` re-mark (idempotent) prevents the Phase-4 `-Rns` orphan-cascading a pre-installed-as-dependency member (`PKG_ASEXPLICIT_FAIL` on failure). Confirm no `-S <pkg>` runs without `-yu` context.
-- **db.lck pre-check:** refuses if `/var/lib/pacman/db.lck` exists; never removes it. The teardown reaper honors an in-flight transaction: `-P $fish_pid`-scoped TERM with 10 s grace under db.lck (§K) — a peer pacman is untouchable by scope. Confirm checked before any package op.
-- **PKGS_DEL via `-Rns` (rdep-aware):** external dependants skip + log (`_RY_PKG_REMOVE_SKIPS`); no cascade or partial-upgrade. `paccache -rk2`/`-ruk0` separate. Providers declared (pacman-contrib); Phase-4 `-Rns` runs after Phase-2 installs so the tool is present — confirm a pactree-absent pre-Phase-2 run only warns (`PACTREE_MISSING`).
+Audit whether the installer is safe to run at all on current fish (3.6 floor) / CachyOS. Flag any TOCTOU, fail-open, or partial-write window. Any GAP in G/H/J is release-blocking and outranks every tuning finding.
 
-## Robustness verdict (required, separate from §1–§13)
+**G. Atomic writes (`_awf_*`):** render-to-tmp (tee `$pipestatus` split-checked; generator fail → EXIT_GEN_*) → (nftables: `nft -c` tmpfile gate) → symlink-swap probe (rc 0/1/2; abort on swap) → chmod → `sudo -n true` re-assert → `mv -T` (tmp in dst parent, same-FS; capability probed on /tmp — vfat /boot rename semantics stand) → backup targets add `.ry.bak` pre + post-write re-read/restore (tri-state rc; `string collect --no-trim-newlines --allow-empty` preserves trailing newlines; cmdline UUID-dependence → NOUUID graceful skip). Non-backup files detect-only on mismatch (bounded by nft -c for the ruleset; a semantically-wrong ruleset still deploys — residual, state it). Confirm no probe pipes a fish builtin into an external reader (SIGPIPE capture-drop) and generator determinism for all four backups.
 
-Emit a final **ROBUSTNESS** block:
-- For each §G–§L: PASS / GAP / UNCERTAIN (cannot confirm against current fish/kernel without testing).
-- Any GAP in §G/§H/§J (atomic-write, lock, boot-wipe) is release-blocking and outranks every tuning finding — surface it first.
-- Correctness, not preference: no "deliberate trade-off" defense for a partial-write window or fail-open lock. FIX applies normally (flag-don't-FIX is for config values, not safety invariants).
+**H. Instance lock (`_acquire_lock*`):** atomic `mkdir` (umask 0077, 0700) + pidfile via mktemp+`mv -Tf` (0600); in-script rationale comment: mkdir+pidfile, not flock — atomic on any fs, no fd inheritance into sudo children, stale-pid reclaim — confirm each leg holds on fish 3.6+. PID-recycle: /proc/PID/stat field-22 starttime + /proc/stat btime; divisor `getconf CLK_TCK` fallback USER_HZ=100 (correct by ABI); reclaim only if holder start > pidfile mtime + 2 s; unparseable ⇒ live, refuse; garbage pidfile settle 0.2 s → re-read → refuse; bounded 3 attempts, fail-closed. Re-read-before-rm guard; symlinked LOCK_DIR refused; `--preserve-root`; kill -0 EPERM ⇒ /proc liveness. Confirm the `^.*\) ` comm-strip survives `) ` in comm and field indexing after it.
 
-Sources: man7.org (mkdir/rename(2), proc(5) stat + USER_HZ, sysconf CLK_TCK), fishshell.com/docs (`$pipestatus`, `string collect`, `--on-signal`, `--on-event fish_exit`, variable-umask), wiki.archlinux.org (pacman partial-upgrade, mkinitcpio, systemd-boot, nftables), docs.kernel.org (/proc/stat btime, accel/amdxdna), man.archlinux.org nft(8).
+**I. Privilege handling (`_as`, `_run`):** `sudo -n` everywhere; one TTY-gated `sudo -v` prompt, non-TTY refuses (no mid-run hang); credential re-asserted before each critical write — confirm the once-prompt cannot recur. Tri-state rc 0/1/2 (drift vs lapse) in `_is_symlink`/`_installed_bytes`/`_ry_content_bytes` — audit every caller branches on 2 (incl. `_vsp_pacman_conf`). `_run` timeout: default 3600 s, >9-digit clamp 2147483647, invalid → default, 0 disables; long ops (pacman, mkinitcpio, sdboot-manage, paccache, updatedb, pkgfile; PATH-resolved, sudo value-flag skip list, `env`/`VAR=` prefixes skipped) FLOORED to 7200 s — confirm 7200 covers worst-case `-Syu` and a cap-kill is fatal-with-rollback. Capture hygiene: argv redacts /tmp/ry-* → [REDACTED]; overflow inlines bytes+sha256 + awk keyword scan of the elided middle (≤10 hits, ≤2000 chars; nothing on disk).
+
+**J. Boot-wipe gate & rollback:** `_irb_taint_gate` (taint OR failed mkinitcpio revert ⇒ skip rebuild, exit 4; `_taint` sets INSTALL_HAD_ERRORS + _RY_BOOT_TAINTED together — confirm every boot-critical write failure routes through it) → `mkinitcpio -P` fail ⇒ exit 4 → `$BOOT` resolved BEFORE the vfat gate; unresolved or non-vfat + REMOVE_EXISTING=yes ⇒ refuse wipe (exit 4) → `_preflight_boot_sanity` (vmlinuz + initramfs + entries or exit 4). Confirm: no path to REMOVE_EXISTING=yes with unverified $BOOT; the Phase-3 cmdline-write → Phase-5 rebuild window is covered by the param-stripped fallback (B1 asymmetry); EXIT_BOOT_CRIT terminal (no Finalize). mkinitcpio rollback: pre-Syu snapshot /run/ry-install (0700, mktemp, tagged) → `_mkinitcpio_revert` same-FS mktemp + byte-exact `cmp` + atomic mv; duplicate KEY= resolves last (matches `_ry_mkinitcpio_array`); tmpfs snapshot same-boot-only (acceptable). Flag if a pacman partial transaction can desync mkinitcpio.conf from installed modules without triggering revert.
+
+**K. Signal & exit teardown:** INT/TERM/HUP/QUIT/ABRT with explicit 128+N map (HUP:129 INT:130 QUIT:131 TERM:143 ABRT:134; unknown→130); idempotent; SIGPIPE marks output broken, JSONL continues; fish_exit prefers _INTENDED_EXIT_CODE → _RY_INSTALL_LAST_EXIT → $status. `--check` stderr-silence holds through the PRE-ARGPARSE window (root + --check-only ⇒ silent exit 3) — confirm no early-init path prints to stderr under a pure --check argv. umask set as the VARIABLE (autoload-race safe) — confirm fish ≥3.6 honors it for children and mkdir. Cleanup order: kill children (TERM to -P $fish_pid descendants; 0.5 s grace, 10 s under db.lck; then KILL; missing pgrep degrades flat 0.5 s) → mkinitcpio revert → tmpfile sweep (`_RY_TMPDIR_GLOBS` 6, PID-scoped ry-*.$fish_pid.* — confirm glob set == created set) → fs sweep → lock release LAST → erase globals. Log lifecycle: mv -T with cp -pT + rm recovery; both-fail keeps old path (warn); symlinked LOG_FILE removed, recreated 0600; root-guard `@@LEFT@@`/`@@IF@@` display sentinels never leak unstripped. SIGKILL is the only cleanup bypass (stale-reclaim §H recovers).
+
+**L. pacman transaction safety:** full `-Syu --needed` only; retry `-Syyu --needed`; second failure fatal; SYSTEM_UPGRADED via `pacman -Q | sha256sum` fingerprint (empty fails open to true). db.lck pre-checked, never removed; teardown reaper is $fish_pid-scoped (peer pacman untouchable) with 10 s grace under db.lck. PKGS_DEL `-Rns` rdep-aware (external dependants skip + `_RY_PKG_REMOVE_SKIPS`); paccache -rk2/-ruk0 separate; pactree-absent pre-Phase-2 warns only (`PACTREE_MISSING`). Confirm no `-S <pkg>` runs outside `-yu` context and db.lck is checked before any package op.
+
+**ROBUSTNESS verdict (required, separate):** per §G–§L PASS / GAP / UNCERTAIN; GAPs in G/H/J surface first; correctness has no "deliberate trade-off" defense.
+
+---
+
+## Sources
+
+docs.kernel.org (kernel-parameters, PCIe/ASPM, amd-pstate, sysctl/vm, networking, block, ext4, UMIP, AMD-Vi, accel/amdxdna, /proc/stat) · git.kernel.org (linux-firmware, r8169, mt76, wireless-regdb) · gitlab.freedesktop.org (mesa, drm/amd) · docs.mesa3d.org · github.com (HansKristian-Work/vkd3d-proton, CachyOS/proton-cachyos, flightlessmango/MangoHud, LizardByte/Sunshine, moonlight-stream) · wiki.archlinux.org (AMDGPU, IOMMU, fsck, Gaming, PipeWire, Zram, SSD, Ext4, Sysctl, NetworkManager, Wireless, nftables, Security, Mkinitcpio, systemd-boot, Bluetooth, System_time, CPU_frequency_scaling, MangoHud, pacman) · wiki.cachyos.org · discuss.cachyos.org · bugzilla.kernel.org · man.archlinux.org (nft, avahi-daemon, systemd.unit, logind.conf, hwclock, timesyncd) · man7.org (mkdir/rename(2), proc(5), sysconf) · fishshell.com/docs · amd.com ROCm · archlinux.org/packages · mangohud-gtr9-pro v1.17.0 companion archive (MangoHud.conf + README + CHANGELOG — HUD lockstep, floors, directive history). Cite access dates + exact versions in the methodology block.

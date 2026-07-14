@@ -4,6 +4,86 @@ CachyOS tuning profile — Beelink GTR9 Pro
 Newest first. Versions correspond to the ry-install.fish release that
 applies the profile. Format: - subsystem: imperative summary.
 
+# 7.105.9 - 2026-07-14
+
+  - docs: re-pin to ry-install 7.105.9 — script delta vs 7.105.8 is
+    the version string only (header comment + VERSION, 2 lines);
+    4923 lines / 288 functions / fish --no-execute clean re-certified
+    on the attached archive; all profile values unchanged
+  - audit: re-verify README-derived claims against the restructured
+    7.105.9 README (Globals table -> prose; Managed Files split into
+    Boot/System/User tables) — BIOS flat 85 W ceiling + TjMax 90,
+    MangoHud #1794 note, PCIe-ASPM rationale line, and the advisory
+    kernel row all survive; the pre-7.99 modprobe-leftover sudo-rm
+    note remains absent, so the §6 unguarded-gap finding stands;
+    ASPM rationale now quoted byte-exact
+
+  Second pass (same date, same source v7.105.9 — appendix-body
+  completion after the accidental-upload double-check):
+
+  - audit: full re-render pass — all 17 generator outputs (plus both
+    modprobe states and both nftables port states) re-derived by
+    executing the 7.105.9 generator functions in a sandbox and
+    byte-compared against the appendices
+  - appendix: expand the B1 LINUX_OPTIONS and B4 EPP/DPM placeholders
+    to the literal rendered values; scalar-to-global maps annotated
+    under the fences (root=UUID placeholder retained —
+    machine-specific)
+  - appendix: move the dispatcher logging.conf body into the B6 fence
+    (was inline prose)
+  - appendix: add B11-B13 exact bodies (logind drop-in, sysctl
+    drop-in, environment.d) — every generator-managed file now has a
+    byte-exact anchor
+  - verify (report-level): P0 queue, cross-references, box-matrix
+    widths, CHANGELOG history preservation, README counts, HUD
+    companion parity, and installer-README claims all re-checked
+    clean; nftables B3 keeps the single annotated body (the
+    RY_REMOTE_PLAY_PORTS=true block is comment-labelled in-fence)
+
+# 7.105.8 - 2026-07-14
+
+  - kernel: swap pcie_aspm.policy=performance -> pcie_aspm=off; drop
+    the mt7925e disable_aspm=1 module option (global ASPM-off covers
+    the MT7925 mitigation; the modprobe drop-in is now
+    amdxdna-blacklist-only and the NPU path renders a comment-only
+    file, validator-accepted)
+  - env: add VKD3D_CONFIG=descriptor_heap (ENV_VARS 11 -> 12)
+  - sysctl: add vm.watermark_boost_factor=0 (SYSCTL_VALUES 9 -> 10)
+  - kernel: hard floor removed (_ir_validate_kernel_floor + KERNEL_MIN
+    dropped; validators 4 -> 3); 6.18.4 kept as an advisory comment —
+    RTL8127 r8169 + suspend-hang regression baseline; gfx1151 hang fix
+    re-anchored to firmware (linux-firmware MES 0x86), not kernel
+  - audit: flag the modprobe-leftover migration gap as unguarded — the
+    ry-install README no longer carries the pre-7.99 sudo rm note and
+    no in-script reference remains
+  - docs: rewrite the reference as a deep-research brief — prose
+    removed, research-priority ordering (P0 queue), per-item search
+    anchors and source domains; closed-finding history dropped
+  - docs: bump version pins to 7.105.8
+
+  Second pass (same date, same source v7.105.8 — HUD companion
+  integration, mangohud-gtr9-pro v1.17.0):
+
+  - hud: cross-audit the embedded MangoHud generator against the
+    companion archive — 19/19 active directives identical in set and
+    order; byte delta is two comment lines (identity header, cpu_temp
+    comment wording); installer confirmed source of truth (repo
+    1.14.0 realignment)
+  - hud: import repo-history dead ends into the §14 protected list —
+    fps_metrics (added 1.10.0, dropped 1.13.0), gpu_junction_temp
+    (hotspot mirrors edge), throttling_status(+_graph) (removed
+    twice), gpu_mem_clock + swap (shared-memory APU)
+  - hud: rewrite P0 #15 — reconcile #1794 (cpu_power reads 0 while
+    cpu_temp active) against the repo's k10temp-pickup claim and the
+    1.15.0 "sensor not reported" note; add P0 #19 HUD floor currency
+    (MangoHud >= 0.8.4, kernel >= 6.14, Mesa 24 — HUD-scoped)
+  - scope: add the UMA vram-carveout special case (vram = BIOS
+    carveout only; ram is the load-bearing figure — never a finding)
+  - verify: add active-directive count (19) plus k10temp hwmon
+    presence and sensors-pickup probes (informational)
+  - docs: register the companion archive in the header, §12, B9, and
+    Sources
+
 # 7.101.0 - 2026-07-12
 
   - docs: condense reference prose (intro, preflight, BIOS, packages)
