@@ -33,9 +33,13 @@ applies the profile. Format: - subsystem: imperative summary.
     priority 95, which resolves the 7.122.0 assert/token asymmetry:
     the runtime assert is now backed by a value the profile actually
     sets
-  - network: systemd-resolved moved to plaintext — DNSOverTLS=no with
-    DNS=94.140.14.14 94.140.15.15 (AdGuard ad-block tier); header
-    text now "AdGuard upstreams, plaintext, mDNS/LLMNR off". Matches
+  - network: systemd-resolved gains explicit upstreams —
+    DNS=94.140.14.14 94.140.15.15 (AdGuard ad-block tier), and the
+    header text changes from "plaintext DNS, mDNS/LLMNR off
+    (diverges from CachyOS DoT default)" to "AdGuard upstreams,
+    plaintext, mDNS/LLMNR off". DNSOverTLS=no and DNSSEC=no were
+    ALREADY the values at 7.122.0 and did NOT change in this window —
+    do not read this entry as a DoT regression. Matches
     the router's own upstream posture; recorded as a closed decision,
     not a finding
   - modules: 60-ry-modules.conf false-state comment updated —

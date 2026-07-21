@@ -69,8 +69,9 @@ queue.
 - **Network** — IPv4-only nftables ruleset (invalid dropped first, then
   established/related accepted, then loopback; default-deny inbound, inbound ICMP echo
   accepted, remote-play ports gated), `nft -c` pre-validated before every deploy/reload;
-  systemd-resolved with mDNS/LLMNR off, **plaintext upstreams (`DNSOverTLS=no`)** to the
-  AdGuard ad-block tier (94.140.14.14 / 94.140.15.15), and `DNSSEC=no`; NetworkManager on
+  systemd-resolved with mDNS/LLMNR off, `DNSOverTLS=no` and `DNSSEC=no` (both unchanged
+  since 7.122.0) and **newly-explicit upstreams** pointing at the AdGuard ad-block tier
+  (94.140.14.14 / 94.140.15.15); NetworkManager on
   wpa_supplicant with Wi-Fi powersave off plus a dispatcher logging drop-in; regulatory
   domain US.
 - **GPU / CPU power (maximum-performance posture)** — amd_pstate EPP **`performance`**

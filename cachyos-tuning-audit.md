@@ -564,7 +564,7 @@ Phase names are live-asserted from `_RY_PHASE_NAMES` (6) and mirrored 1:1 across
 
 Content hashes are `$HOME`-independent; only destination PATHS differ per user. The udev rule at 639 B and the 5,093 B total are the anchors for any perf-value change (a value substitution plus its comment edits moves both).
 
-### B1. /etc/kernel/cmdline + /etc/sdboot-manage.conf + /etc/mkinitcpio.conf
+## B1. /etc/kernel/cmdline + /etc/sdboot-manage.conf + /etc/mkinitcpio.conf
 ```
 rw root=UUID=<_ROOT_UUID> amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=force fsck.repair=yes ipv6.disable=1 mt7925e.disable_aspm=1 nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off usbcore.autosuspend=-1 zswap.enabled=0
 ```
@@ -593,7 +593,7 @@ COMPRESSION_OPTIONS=(-1 -T0)
 - The cmdline generator reads `$_ROOT_UUID` (SINGLE underscore), not `$_RY_ROOT_UUID`. Any reproduction harness must set it, or `_ry_validate_configs` returns rc 3 via `EXIT_GEN_NOUUID` and looks like a regression.
 - `LINUX_FALLBACK_OPTIONS="quiet"` strips all 15 — the fallback exposure in §7.
 
-### B2. /boot/loader/loader.conf
+## B2. /boot/loader/loader.conf
 ```
 # systemd-boot loader configuration
 default @saved
@@ -602,7 +602,7 @@ console-mode keep
 editor no
 ```
 
-### B3. /etc/nftables.conf (validate rule-by-rule)
+## B3. /etc/nftables.conf (validate rule-by-rule)
 ```
 #!/usr/bin/nft -f
 # ry-install: default-deny-inbound, IPv4-only (ufw masked; ipv6.disable=1). Add inbound ports below.
@@ -632,7 +632,7 @@ With `RY_REMOTE_PLAY_PORTS=true` (NOT the default) the input chain gains three l
 - Rule order is `invalid drop` -> `established,related accept` -> `iif "lo" accept`. The §11 question is whether any loopback path can be conntrack-classified invalid and therefore dropped before the `lo` accept is reached.
 - `icmp type { echo-request, ... } accept` is a HARD-ASSERTED regression guard (`_vss_nft` fails on its absence). Inbound ping is intentional; never flag it.
 
-### B4. /etc/udev/rules.d/99-ry-perf.rules
+## B4. /etc/udev/rules.d/99-ry-perf.rules
 ```
 # ry-install: udev performance rules (managed file, do not edit by hand)
 # NVMe scheduler none (lowest tail latency; diverges from CachyOS kyber default)
@@ -647,7 +647,7 @@ ACTION=="add", KERNEL=="card[0-9]*", SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor"
 - The GPU rule is `ACTION=="add"` only (not `add|change`) — add-only, no re-assert after a GPU reset. With all sleep targets masked (§9) there is no resume event, so enumeration is the only trigger that matters.
 - EPP interpolates `$EPP_PREFERENCE` unquoted into the ATTR, which is why `_ir_validate_keys` L708 gates it against `_RY_EPP_LEVELS` before any write.
 
-### B5. /etc/systemd/resolved.conf.d/99-cachyos-resolved.conf
+## B5. /etc/systemd/resolved.conf.d/99-cachyos-resolved.conf
 ```
 # systemd-resolved: AdGuard upstreams, plaintext, mDNS/LLMNR off
 [Resolve]
@@ -662,7 +662,7 @@ DNSSEC=no
 - `DNS=` carries the AdGuard ad-block pair. **This line alone is not sufficient under NetworkManager** — per-link DHCP DNS outranks it (systemd #33973). The operative mechanism is the NM drop-in in B6.
 - `DNSSEC` and `DNSOverTLS` render from the `RESOLVED_DNSSEC` / `RESOLVED_DOT` globals under RENAMED keys, so a literal `grep DNSSEC=no` on the script returns nothing. The rendered body is ground truth.
 
-### B6. NetworkManager 99-cachyos-nm.conf + dispatcher logging.conf
+## B6. NetworkManager 99-cachyos-nm.conf + dispatcher logging.conf
 ```
 # NetworkManager configuration — wpa_supplicant backend
 [device]
@@ -689,13 +689,13 @@ LogLevelMax=notice
 - **`[global-dns-domain-*] servers=` is the load-bearing DNS line on this system** (P0 #14), not the resolved `DNS=`. Note the empty `[global-dns]` section header is required to open the block.
 - `wifi.powersave=2` = OFF (mt76 software PS causes latency spikes). The value 2 means disabled in NM's enum — do not read it as a level.
 
-### B7. /etc/iw-regdomain
+## B7. /etc/iw-regdomain
 ```
 # ry-install: wireless regulatory domain (managed file, do not edit by hand)
 COUNTRY=US
 ```
 
-### B8. /etc/bluetooth/main.conf + /etc/default/cpupower-service.conf
+## B8. /etc/bluetooth/main.conf + /etc/default/cpupower-service.conf
 ```
 # ry-install: BlueZ daemon config (managed file, do not edit by hand)
 [General]
@@ -713,7 +713,7 @@ GOVERNOR='performance'
 
 - `GOVERNOR='performance'` — changed from `'powersave'` at 7.128.0. 115 B (was 113 B). This file is the governor's only delivery path; `CPUPOWER_GOVERNOR` is renamed to `GOVERNOR=` on the way out.
 
-### B9. ~/.config/MangoHud/MangoHud.conf (19 active + 1 commented + file header)
+## B9. ~/.config/MangoHud/MangoHud.conf (19 active + 1 commented + file header)
 ```
 # ry-install: MangoHud readout-only HUD (managed file, do not edit by hand)
 horizontal
@@ -740,7 +740,7 @@ background_alpha=0.4
 
 - 19 active directives, 1 commented (`cpu_temp`), 1 header. Byte-identical to the 7.122.0 rendering — the HUD did not change in this window. Companion `mangohud-gtr9-pro` v1.17.0 parity holds: same set, same order, comment-only byte delta.
 
-### B10. /etc/modprobe.d/60-ry-modules.conf
+## B10. /etc/modprobe.d/60-ry-modules.conf
 ```
 # ry-install: module options + blacklist (managed file, do not edit by hand)
 # blacklist amdxdna: XDNA NPU needs IOMMU, probes -ENODEV (ret -19) under amd_iommu=off
@@ -757,7 +757,7 @@ With `BLACKLIST_AMDXDNA=false` (the NPU opt-in path) the file renders comment-on
 - **Two corrections against the 7.122.0 brief.** The errno is **`-ENODEV (ret -19)`**, not `-EINVAL (-22)`. And the false-state comment now reads "MT7925 ASPM handled on the kernel command line" — tracking the §5 token re-add, replacing the 7.122.0 text that named `pcie_aspm.policy=performance`.
 - Neither the default nor the opt-in body references `60-ry-mt7925e.conf` or `60-ry-blacklist-amdxdna.conf`. Those pre-7.99 leftovers have zero refs in the script and zero in the README — the §6 gap, re-verified by grep at this pin.
 
-### B11. /etc/systemd/logind.conf.d/99-cachyos-logind.conf (LOGIND_IGNORE_KEYS 8)
+## B11. /etc/systemd/logind.conf.d/99-cachyos-logind.conf (LOGIND_IGNORE_KEYS 8)
 ```
 # systemd-logind configuration — desktop power handling
 [Login]
@@ -774,7 +774,7 @@ HandleRebootKeyLongPress=ignore
 - 8 keys, each rendered `Handle*Key=ignore`. This is one of only two service keys that reach their destination under their own name (the other is `COUNTRY=`); the other 18 are renamed on the way out.
 - Inert keypresses only — this is NOT the sleep-masking mechanism (that is MASK, §9). Do not conflate them.
 
-### B12. /etc/sysctl.d/95-ry-overrides.conf (SYSCTL_VALUES 11 - 3/6)
+## B12. /etc/sysctl.d/95-ry-overrides.conf (SYSCTL_VALUES 11 - 3/6)
 ```
 # ry-install sysctl tunables (priority 95 — loaded after CachyOS vendor 70-cachyos-settings.conf)
 kernel.nmi_watchdog = 0
@@ -794,7 +794,7 @@ vm.watermark_boost_factor = 0
 - Stored `k=v` in the array, emitted `k = v`. Any parity check must normalise whitespace.
 - The header annotation is SELECTIVE by design (it names the priority-95 ordering, not every key) at 64 ch against a <=66 cap. There is no room to annotate more; do not propose "fixing" it.
 
-### B13. ~/.config/environment.d/10-environment.conf (ENV_VARS 10 - 1; 0600)
+## B13. ~/.config/environment.d/10-environment.conf (ENV_VARS 10 - 1; 0600)
 ```
 # Environment for systemd --user services and graphical sessions (Plasma, Flatpak, D-Bus apps)
 DXVK_LOG_LEVEL=none
