@@ -4,6 +4,213 @@ CachyOS tuning profile — Beelink GTR9 Pro
 Newest first. Versions correspond to the ry-install.fish release that
 applies the profile. Format: - subsystem: imperative summary.
 
+# 7.130.0 - 2026-07-20
+
+  Rebase across 8 upstream releases (7.122.0 -> 7.130.0). The profile
+  moved to a maximum-performance power posture and closed five of the
+  previous edition's open research questions by code change. Every
+  number in this edition was re-derived from the 7.130.0 script by
+  live evaluation; nothing was carried forward from the 7.122.0
+  edition (Rule 7).
+
+  - docs: re-pin to ry-install 7.130.0 — 4915 lines / 287 functions /
+    sha256 59e387af on the attached archive; harness cut at the
+    ARGPARSE banner (L4786); README and CHANGELOG re-pinned in
+    lockstep
+  - power: CPUPOWER_GOVERNOR powersave -> performance,
+    EPP_PREFERENCE balance_performance -> performance, GPU_DPM_LEVEL
+    auto -> high — the three raises land together as one posture
+    change; udev comments restated as "maximum CPPC hint" and
+    "gfx1151 clock-floor; forced high"
+  - kernel: KERNEL_PARAMS 14 -> 15 — mt7925e.disable_aspm=1 RE-ADDED,
+    now as a cmdline module parameter rather than a modprobe drop-in;
+    pairs with the retained pcie_aspm.policy=performance
+  - env: ENV_VARS 11 -> 10 — FSR4_UPGRADE renamed to
+    PROTON_FSR4_UPGRADE (closes old #2 in favor of the prefixed
+    name); VKD3D_CONFIG=descriptor_heap removed, deferring to
+    vkd3d-proton's own default
+  - sysctl: SYSCTL_VALUES 10 -> 11 — kernel.nmi_watchdog=0 added at
+    priority 95, which resolves the 7.122.0 assert/token asymmetry:
+    the runtime assert is now backed by a value the profile actually
+    sets
+  - network: systemd-resolved moved to plaintext — DNSOverTLS=no with
+    DNS=94.140.14.14 94.140.15.15 (AdGuard ad-block tier); header
+    text now "AdGuard upstreams, plaintext, mDNS/LLMNR off". Matches
+    the router's own upstream posture; recorded as a closed decision,
+    not a finding
+  - modules: 60-ry-modules.conf false-state comment updated —
+    "MT7925 ASPM handled on the kernel command line"
+  - errata: amdxdna probe failure corrected in-script to -ENODEV
+    (ret -19); the 7.122.0 brief said -EINVAL / -22, which was wrong.
+    Recorded as a correction, not a delta
+  - research: P0 queue rebuilt to 20 questions and renumbered fresh —
+    #1 max-perf stacking under the 85 W ceiling, #2 whether a
+    performance governor changes anything once EPP is pinned under
+    amd_pstate=active, #3 the ASPM policy + module-parameter pair
+  - research: five 7.122.0 questions CLOSED by code change — old #2
+    (FSR4 name), #3 (AMD_VULKAN_ICD), #4 (VKD3D_CONFIG), #7
+    (nmi_watchdog), #12 (MT7925 mitigation); tabulated in the header
+    so a reader of the old edition sees them before the queue
+  - research: old #13 and #25 are void for this host after the
+    2026-07-19 fresh reinstall, but both code gaps stand and are kept
+    as gaps rather than host findings
+  - rules: add Rule 8 — a question closed by a code change is closed;
+    do not re-litigate a decision the maintainer already executed
+  - appendix: re-render all 17 generator bodies plus both toggle
+    states (BLACKLIST_AMDXDNA=false NPU path, RY_REMOTE_PLAY_PORTS=
+    true) by executing the 7.130.0 generators offline — 19 bodies,
+    5093 B total, udev 639 B; determinism confirmed by 3x re-render
+    (concatenated sha256 9b89bcc3d518a40e)
+  - appendix: rename the trailing robustness appendix block from the
+    nonexistent "G-L" heading carried by the 7.122.0 document to
+    F1-F6; the appendix set is and remains A-E plus F
+  - verify: 59 verify functions unchanged (12 orchestrators + 47
+    subs); _vre_envvars iterates $ENV_VARS dynamically, so both env
+    changes propagated with no verifier edit and no stale
+    VKD3D_CONFIG assert exists
+  - verify (report-level): §15 VERIFY block rewritten for the new
+    baseline — governor/EPP/DPM asserted at their raised values,
+    PROTON_FSR4_UPGRADE asserted present, VKD3D_CONFIG asserted
+    absent, nmi_watchdog read from /proc and cross-checked against
+    sysctl, mt7925e.disable_aspm asserted on the cmdline; adds an
+    idle-floor turbostat measurement block feeding P0 #1
+  - audit: re-verify the §6 modprobe-leftover gap at this baseline —
+    60-ry-mt7925e.conf and 60-ry-blacklist-amdxdna.conf still have
+    zero references in the script and zero in the README; the finding
+    stands open across four generations
+  - unchanged: PKGS_ADD 16, PKGS_DEL 9, MASK 11, the 8 logind keys,
+    the mkinitcpio HOOKS/MODULES/COMPRESSION arrays, the 4 backup
+    targets, 17 managed files, and the MangoHud body (byte-identical
+    7.106 -> 7.130) all carry forward intact — 18 of the 21 oracle
+    counts did not move
+
+# 7.122.0 - 2026-07-19
+
+  Rebase across 17 upstream releases (7.105.9 -> 7.122.0). This is not
+  a version-string bump: 26 profile values changed. Every number in
+  this edition was re-derived from the 7.122.0 script by live
+  evaluation; nothing was carried forward from the prior edition.
+
+  - docs: re-pin to ry-install 7.122.0 — 4906 lines / 287 functions /
+    sha256 e46777cf on the attached archive; README and CHANGELOG
+    re-pinned in lockstep
+  - audit: add a "Baseline delta vs the 7.105.9 brief" section as the
+    first section of the reference — 26-row matrix of every changed
+    value, placed before Mission so a reader of the old edition sees
+    the invalidated values before anything else
+  - kernel: KERNEL_PARAMS 17 -> 14 — pcie_aspm=off REVERTED to
+    pcie_aspm.policy=performance; nowatchdog, tsc=reliable and
+    8250.nr_uarts=0 removed
+  - env: ENV_VARS 12 -> 11 — PROTON_FSR4_RDNA3_UPGRADE renamed to
+    FSR4_UPGRADE; AMD_VULKAN_ICD and DXVK_LOG_PATH removed;
+    POWERDEVIL_NO_DDCUTIL=1 added
+  - packages: PKGS_ADD 18 -> 16 — ddcutil and git-delta dropped
+    (ddcutil removal pairs with the new PowerDevil DDC/CI opt-out)
+  - services: MASK 12 -> 11 — modemmanager.service dropped;
+    ufw.service is now a MASK member, i.e. neutralized by mask rather
+    than by removal
+  - network: systemd-resolved DNSSEC=allow-downgrade -> DNSSEC=no;
+    header text corrected from "CachyOS DoH default" to "DoT default"
+  - network: nftables rule order changed — ct state invalid drop now
+    precedes established/related accept and the loopback accept
+    (previously loopback first); appendix body updated to the new
+    order
+  - network: NetworkManager dispatcher logging drop-in is now its own
+    managed destination
+    (/etc/systemd/system/NetworkManager-dispatcher.service.d/logging.conf)
+  - gates: record that the profile now carries NO version gates —
+    MESA_MIN removed entirely, and the advisory kernel-floor comment
+    is gone alongside the previously-removed hard validator; README
+    Requirements table and kernel badge updated accordingly
+  - verify: 59 verify functions (^function _v*) = 12 _verify_*
+    orchestrators + 47 subs, every one cited by name in Appendix C;
+    document the new _vrsv_user_units
+    sub (asserts plasma-powerdevil.service not failed, warns on any
+    failed systemctl --user unit) — reads as the in-script remediation
+    for the F-7 PowerDevil crash-loop
+  - appendix: re-render all 17 generator bodies plus both toggle
+    states (BLACKLIST_AMDXDNA=false NPU path, RY_REMOTE_PLAY_PORTS=
+    true) by executing the 7.122.0 generators offline; determinism
+    confirmed by 3x re-render with identical sha256 for all 17
+  - appendix: byte-verify every appendix fence against the captured
+    generator output — 16/16 EXACT, 0 mismatches
+  - appendix: correct _RY_ARGPARSE_SPEC to 6 entries (the 7.105.9
+    brief recorded 7 — that was wrong, not a delta) and list all
+    entries; dependency roster stated as 37 hard + 20 warn-only
+  - research: P0 queue 19 -> 24 questions, reordered — the ASPM
+    link-state audit and the FSR4 variable-name correctness question
+    take the top two slots; the rename toward LESS specificity is
+    flagged as the highest-value single question in the brief
+  - research: add the nmi_watchdog assert/token asymmetry as a new
+    finding — nowatchdog was dropped from KERNEL_PARAMS but --verify
+    still hard-asserts nmi_watchdog=0, so either CachyOS yields it by
+    default or --verify fails on a clean 7.122.0 boot; cheapest
+    testable item in the queue
+  - research: add the RADV-selection question — with AMD_VULKAN_ICD
+    gone, _vre_envvars no longer asserts any ICD selection
+  - audit: re-verify the §6 modprobe-leftover gap at this baseline —
+    60-ry-mt7925e.conf and 60-ry-blacklist-amdxdna.conf still have
+    zero references in the script and zero in the README; the finding
+    stands open across three generations
+  - rules: add Rule 7 — do not carry values forward from any
+    pre-7.122.0 edition of this brief; re-deriving a removed token is
+    a stale-source error, not a finding
+  - protected: extend the do-not-recommend list with all 7.106-7.122
+    removals and the maintainer's closed candidate ledger (WINEDEBUG,
+    BlueZ AutoEnable, NM wifi.backend, cachyos-gaming-meta,
+    MODULES=(amdgpu), lib32-mesa all stay); add "do not recommend
+    returning ufw to PKGS_DEL"
+  - verify (report-level): §15 VERIFY block rewritten for the new
+    baseline — ASPM token matched as pcie_aspm\S* rather than =off,
+    removed tokens asserted absent, nmi_watchdog read from /proc, ufw
+    asserted masked, ddcutil asserted absent, FSR4_UPGRADE and
+    POWERDEVIL_NO_DDCUTIL asserted present
+  - sysctl/hud/logind/mkinitcpio: re-confirmed unchanged — all 10
+    sysctl values, the MangoHud body (byte-identical 7.106 -> 7.122),
+    the 8 logind keys, and the mkinitcpio HOOKS/MODULES/COMPRESSION
+    arrays carry forward intact
+
+  Second pass (same date, same source v7.122.0 — independent
+  re-derivation rather than re-reading the first pass):
+
+  - audit: re-render all 17 generator bodies from a clean harness run
+    and byte-compare against the appendices — 16/16 EXACT; the two
+    user-scope files differ only in captured FILENAME ($HOME vs
+    /home/ryan), content byte-identical
+  - audit: re-derive the full 21-entry count oracle by live eval —
+    every count matches the shipped figures; note that `eval echo
+    \$\$name` collapses arrays to one element and silently reports
+    every count as 1, so array counts require `eval set vals \$\$name`
+  - fix: correct the verify-function figure — the brief claimed 57
+    with no valid basis. Live enumeration of `^function _v*` gives 59
+    = 12 _verify_* orchestrators + 47 subs; corrected in the delta
+    table, Appendix C, and the README count matrix
+  - appendix: close the Appendix C citation gap — _verify_static_packages,
+    _vmh_existence_only and _vmh_order_checks were defined in the
+    script but uncited; all 59 verify functions are now named, and
+    Appendix C citation coverage is verified 59/59 with zero ghost
+    references
+  - research: NEW FINDING P0 #25 — stale-mask gap. The script never
+    unmasks: _configure_services_mask only adds, and both
+    _verify_static_services and _vrsv_masked_inactive iterate $MASK.
+    A unit DROPPED from MASK therefore stays masked forever on an
+    already-deployed host and falls outside all verify coverage.
+    modemmanager.service is masked-and-orphaned on any host deployed
+    at <=7.121; §6, §9 and the §15 VERIFY line corrected accordingly
+    (the prior edition wrongly implied it would read as unmasked)
+  - protected: state the removal-reconciliation asymmetry as a general
+    rule — values inside generated files self-heal (generators rewrite
+    wholesale), values in external system state do not (a package
+    dropped from PKGS_ADD stays installed; a unit dropped from MASK
+    stays masked). ddcutil is the live example: dropped from PKGS_ADD
+    but still referenced by the L4455 i2c-group hint
+  - verify (report-level): script re-measured at 4906 lines / 287
+    functions with 287/287 carrying --description and zero duplicate
+    names; 37 hard + 20 warn-only dep roster re-counted exact; all 17
+    destinations resolve to both a content generator and a post-hook;
+    P0 queue re-checked continuous 1..25 with all cross-references in
+    range; 3 box matrices re-checked non-ragged; 25 fences balanced
+
 # 7.105.9 - 2026-07-14
 
   - docs: re-pin to ry-install 7.105.9 — script delta vs 7.105.8 is
