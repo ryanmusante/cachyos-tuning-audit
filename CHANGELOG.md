@@ -4,6 +4,97 @@ CachyOS tuning profile — Beelink GTR9 Pro
 Newest first. Versions correspond to the ry-install.fish release that
 applies the profile. Format: - subsystem: imperative summary.
 
+# 7.135.1 - 2026-07-25
+
+  Rebase across 5 upstream releases (7.130.0 -> 7.135.1). NO TUNING
+  VALUE CHANGED. All 21 count tripwires, all 13 profile scalars and
+  all 17 generated file bodies are byte-identical to the 7.130.0 pin,
+  confirmed by diffing the previous edition's rendered Appendix B
+  bodies against fresh generator output (18 of 20 fences matched
+  exactly; the 2 misses are the size table and the remote-play diff
+  fragment, both correct by construction). Everything in this edition
+  is structural, verification-surface, or robustness. Re-derived from
+  the 7.135.1 script by live evaluation; nothing carried forward
+  (Rule 7).
+
+  - docs: re-pin to ry-install 7.135.1 — 4963 lines / 292 functions /
+    sha256 509c41bc on the attached archive; harness cut at the
+    ARGPARSE banner (L4834); README and CHANGELOG re-pinned in
+    lockstep
+  - verify: the modprobe-leftover gap is CLOSED after four
+    generations. _ry_stale_ry_dropins is one shared helper with two
+    callers — _vss_modprobe warns, _check_record_orphans records
+    MODPROBE_STALE_DROPIN to JSONL. Old P0 #15 is retired, not
+    carried
+  - verify: the stale-mask gap is CLOSED for detection.
+    _ry_orphan_masked_units diffs the live masked set against MASK;
+    _vss_orphan_masks reports it as INFO because mask ownership is
+    unattributable, and --check records MASK_ORPHAN
+  - design: neither orphan class sets DRIFT and neither is
+    self-healing. A re-run cannot clear either, so exit 10 would go
+    permanently non-zero and train the operator to ignore it. New
+    P0 #21 evaluates that trade rather than treating it as a gap
+  - packages: PKGS_ADD orphans remain undetectable BY DESIGN — the
+    reasoning (a persisted manifest would add its own drift surface)
+    is now on file and documented upstream, so it is recorded as a
+    stated position in the protected list, not an oversight
+  - preflight: a fourth validator, _ir_validate_sets, refuses deploy
+    on PKGS_ADD n PKGS_DEL, MASK n EXPECTED_SERVICES, and
+    MASK n _RY_PKG_MANAGED_SERVICES. All three shipped intersections
+    are empty. Any candidate that adds a package or unit must clear
+    all three
+  - robustness: the one-time .ry.orig first-adoption preserve was
+    DEAD CODE from 7.109.0 through 7.135.0 — a fish set -l inside an
+    if block is not visible after it, so the branch never ran and 13
+    of 17 destinations were overwritten unbacked. Fixed at 7.135.1.
+    Appendix F1 is rewritten around it and new P0 #15 assesses the
+    residual exposure and the primitive itself
+  - robustness: backup coverage restated as two different guarantees.
+    4 boot files get .ry.bak plus post-write verify/restore; the
+    other 13 get a one-time .ry.orig and nothing more. Do not
+    describe the 13 as backed up on every write
+  - research: P0 #2 is re-framed from open design question to
+    upstream verification. The profile now states in writing that the
+    performance governor pins the EPP hint to its maximum and rejects
+    any other value, retracting the older claim that powersave was
+    required to honor EPP. The rejection half is new and testable —
+    if it holds, the udev EPP rule issues a write that cannot land
+  - research: a live source conflict is recorded rather than resolved
+    in-brief. This document's own section 5 says
+    pcie_aspm.policy=performance disables ASPM; the profile now says
+    it biases links away from ASPM and to confirm with lspci -vv.
+    Both agree that pcie_aspm=off does not disable ASPM. Settle it
+    and name the trusted side; host audit A1 is still unrun
+  - research: P0 #4 gains a testable claim — the profile now asserts
+    that recent Proton-CachyOS builds copy the FSR4 DLL
+    automatically, so PROTON_FSR4_UPGRADE mainly pins a version
+  - errata: the stderr-write census is RECONCILED, not drifting. 78
+    raw >&2 occurrences on 74 lines whole-file, of which 43 sit
+    inside 17 function bodies and 35 are top-level pre-init
+    preflight. Both figures are correct under their own scoping; the
+    invariant means single authority for leveled user-facing output,
+    not sole writer to fd 2
+  - counts: functions 287 -> 292, verify functions 59 -> 60 (12
+    orchestrators + 48 subs), sub markers 91 -> 93, preflight
+    validators 3 -> 4. _msg_print moved L1105 -> L1117; the udev
+    generator comments moved L870/875/877 -> L882/887/889
+  - counts: a full perf-value change now touches 13 sites, up from
+    10. The three new ones are README Service Keys rows that carry
+    the governor, DPM and EPP values directly. Every line number in
+    the old 10-site list is stale
+  - method: determinism must be compared per file by content hash or
+    with a sorted manifest — a concatenated hash over the output
+    directory is not comparable between passes because glob order
+    depends on harness filenames
+  - method: build the harness by cutting at the ARGPARSE banner AND
+    deleting the line-3 source guard, then source it as a non-root
+    user. Census functions by set difference before and after
+    sourcing, never by parsing
+  - method: verify every before column against the old edition's
+    RENDERED BODY, not against recollection. A drift row asserting a
+    change that never happened passes every count check and every
+    byte check
+
 # 7.130.0 - 2026-07-20
 
   Rebase across 8 upstream releases (7.122.0 -> 7.130.0). The profile
