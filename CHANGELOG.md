@@ -4,6 +4,101 @@ Changes for cachyos-tuning-audit
 Newest first. Versions track the pinned ry-install.fish release.
 
 
+7.158.0
+-------
+
+  - docs: re-pin 7.155.0 -> 7.158.0 (4915 lines, 294 functions,
+    sha256 13a467b8; zip cc97b5a5; harness cut L4786, unmoved)
+  - surface: no perf value changed, now twenty-eight releases (7.130.0
+    -> 7.158.0). All four perf scalars identical
+  - surface: five generated bodies changed; 17-file total 4,949 ->
+    4,858 B
+  - surface: mkinitcpio.conf changed content at ZERO byte delta,
+    COMPRESSION_OPTIONS -1 -> -3; only the fence diff catches it
+  - surface: kernel/cmdline 352 -> 351 B and sdboot-manage.conf 544 ->
+    543 B after fsck.mode=force -> auto
+  - surface: 95-ry-overrides.conf 441 -> 376 B; both netdev_budget
+    keys removed at 7.157.0
+  - surface: 10-environment.conf 306 -> 282 B; PROTON_ENABLE_WAYLAND
+    removed after 7.155.0
+  - gates: all eight T0 observations returned. T0 is now a results
+    table, not an action list
+  - gates: idle floor 21.33 / 21.69 W package, 3.93 / 4.20 W core at
+    Busy% 0.13 / 0.24; max_cstate=1 retired to KEEP
+  - gates: every PCIe link reads LnkCtl ASPM Disabled, so
+    pcie_aspm.policy=performance does real work on this board
+  - gates: root filesystem is ext4, k10temp exposes only Tctl
+    (temp1_input), and energy_uj is mode 400
+  - gates: softnet squeezed is 0 on all 32 CPUs; both 10 GbE links are
+    down and wlan0 carries the default route
+  - errata: T3-3 was framed against a Btrfs root. The root is ext4, so
+    fsck.mode=force forced a full check on every boot
+  - errata: two oracle values moved, ENV_VARS 10 -> 9 and
+    SYSCTL_VALUES 11 -> 9; the never-moved claim is retired
+  - errata: T2-3 is declined on PLATYPUS grounds, not scope; relaxing
+    energy_uj re-opens the RAPL side channel
+  - errata: the 278 expected verify OK count is stale and now UNKNOWN;
+    three assertion counts fell with no verify-function edit
+  - errata: line anchors did not move this rebase, the first time.
+    Always locate the symbol regardless
+  - scope: T1-2 closed by the artifact, the second such retirement in
+    three rebases; T2-1 closed on measurement
+  - scope: T3-1 and T3-2 retired to KEEP by maintainer decision;
+    record the trade rather than re-proposing removal
+  - scope: add T4-7 icmpv6 coupling and T4-8 /boot post-hook glob as
+    tracked LOW and INFO items
+  - scope: add a tier-3 removal row; an ENV_VARS drop persists in a
+    live systemd --user session until logout
+  - research: re-fix the upstream version set on 2026-08-07; mainline
+    7.2.0-rc6, linux-cachyos 7.1.6-1, Mesa 26.3.0-devel, all unmoved
+  - research: MangoHud #1794 and systemd #33579 both still open
+
+
+7.155.0
+-------
+
+  - docs: re-pin 7.141.0 r2 -> 7.155.0 (4915 lines, 294 functions,
+    sha256 0f65a126; zip ebd5fc13; harness cut L4786)
+  - surface: no perf value changed, now twenty-five releases (7.130.0
+    -> 7.155.0). 21 tripwires and 4 perf scalars identical
+  - surface: three generated bodies DID change and none moved a count;
+    17-file total 5,089 -> 4,949 B
+  - surface: 99-cachyos-resolved.conf 154 -> 90 B after the 7.147.0
+    DNS= cut and the 7.148.0 DNSOverTLS/DNSSEC cut
+  - surface: 99-cachyos-nm.conf 219 -> 148 B; 7.147.0 removed the
+    global-dns and global-dns-domain-* blocks
+  - surface: 10-environment.conf 311 -> 306 B; 7.154.0 swapped
+    PROTON_FSR4_UPGRADE=1 for FSR4_WATERMARK=1
+  - errata: the T5 DNS item was wrong on both halves. The host pins
+    nothing and the router has run DoT to AdGuard since 2026-07-31
+  - errata: T1-3 is closed by the artifact, not withdrawn on evidence.
+    There is no global FSR4 flag left for the RDNA3 workaround
+  - errata: a perf-value change touches 11 sites, not 13. The udev
+    generator description and the README prose were never edit sites
+  - errata: sixteen service keys, not nineteen. The old figure listed
+    RESOLVED_DOT, removed at 7.148.0
+  - errata: BOOT_SPACE_CRIT/WARN is MiB, not MB, and the 278 verify OK
+    count is empirical rather than a script literal
+  - errata: the sysctl drop-in does NOT annotate 3 of 11 keys at 64
+    chars. It carries one header comment and never annotated keys
+  - errata: the udev comment lines are sites 4 and 5 of the 11-site
+    list; the stale back-reference said 5 and 6 of 13
+  - anchors: every line number moved; the script lost 75 lines to
+    helper packing and the DNS removals
+  - anchors: perf globals shift -1 to 585/587/589/590/591 and MASK to
+    609; harness cut moves backwards 4861 -> 4786
+  - anchors: _ir_validate_post_hooks 4591 -> 4524,
+    _check_record_orphans 2632 -> 2589, _msg_print 1109 -> 1087
+  - anchors: README perf sites 84/86/189/193/194 -> 96/98/201/205/206
+  - research: re-fetch fourteen settled claims on 2026-08-05; mainline
+    is 7.2.0-rc6 and linux-cachyos 7.1.6-1
+  - research: clearcpuid still absent from kernel-parameters.txt at
+    rc6; dynamic_epp still defaults false at v7.1
+  - research: MangoHud #1794 and systemd #33579 both still open
+  - scope: add T0-8, read per-link DNS off the running system; nothing
+    in the verify surface asserts it any more
+
+
 7.141.0
 -------
 
