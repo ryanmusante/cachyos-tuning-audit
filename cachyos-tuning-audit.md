@@ -62,11 +62,10 @@ artifact, not the upstream world.
 
 ### 1a. The perf surface still has not moved; five config bodies did, one of them at zero bytes
 
-**The four perf scalars are byte-identical 7.141.0 → 7.158.0**, and that now spans
-**twenty-eight releases (7.130.0 → 7.158.0)**. Governor `performance`, EPP `performance`,
-DPM `high` and driver `amd-pstate-epp` have not been edited once in that window. A
-recommendation asserting that a *perf* value moved in this window is a stale-source error,
-not a finding.
+**The four perf scalars are byte-identical across twenty-eight releases, 7.130.0 →
+7.158.0.** Governor `performance`, EPP `performance`, DPM `high` and driver
+`amd-pstate-epp` have not been edited once in that window. A recommendation asserting that a
+*perf* value moved in it is a stale-source error, not a finding.
 
 **Two count-oracle values DID move, and that is new.** `ENV_VARS` 10 → 9 and
 `SYSCTL_VALUES` 11 → 9. The previous edition's headline claim — "not one of these 21 values
@@ -103,11 +102,9 @@ check and a Σ check all pass across it. The only mechanism that catches it is a
 diff of the embedded fence against fresh generator output — which is why §7e embeds all
 seventeen bodies and why the fence walker in §9 exists.
 
-**Three consecutive rebases have now each had a change that a count check could not see:**
-7.155.0's `ENV_VARS`-held-at-10 FSR4 swap, and now a zero-delta body edit. Treat count
-parity as evidence of nothing.
-
-The other twelve bodies are byte-identical, re-rendered and diffed rather than assumed.
+**Three consecutive rebases have each had a change a count check could not see** — 7.155.0's
+`ENV_VARS`-held-at-10 FSR4 swap, and now a zero-delta body edit. Treat count parity as
+evidence of nothing. The other twelve bodies are byte-identical, re-rendered and diffed.
 
 ### 1b. What did change
 
@@ -128,11 +125,10 @@ The other twelve bodies are byte-identical, re-rendered and diffed rather than a
 ║ CHANGELOG     ║ 143 L      ║ 131 L      ║ big trim + docs-entry purge          ║
 ```
 
-**Every line anchor in this edition is identical to the previous one.** The script kept its
-line count and lost 47 bytes to in-place value edits, so the perf globals, the validators,
-the generators and the README perf rows all sit exactly where the 7.155.0 edition put them.
-**This does not relax the standing rule.** Anchors have moved on four of the last five
-rebases, once backwards; always locate a symbol, never hardcode its line.
+**Every line anchor in this edition is identical to the previous one** — the script kept its
+line count and lost 47 bytes to in-place value edits. **This does not relax the standing
+rule:** anchors moved on four of the last five rebases, once backwards. Always locate a
+symbol, never hardcode its line.
 
 ### 1c. Removals that must not be re-derived from a stale source
 
@@ -253,18 +249,17 @@ action** — T0 below is a results table, and the actions it unblocked live in t
 - **T0-6 → the T5 EPP no-op call is confirmed.** `dynamic_epp` reads `disabled`, matching the
   profile's assertion, and EPP reads `performance`. The udev EPP write remains a redundant
   but hotplug-safe no-op.
-- **T0-7 → the backup design works as specified.** Four `.ry.bak` on the boot-critical four
-  and two `.ry.orig` on non-boot destinations that differed at first adoption. No user-scope
-  `.ry.orig`, which is correct for a host whose user files had no pre-existing content.
+- **T0-7 → the backup design works as specified.** The absent user-scope `.ry.orig` is
+  correct for a host whose user files had no pre-existing content, not a broken preserve.
 - **T0-8 → the DNS posture is confirmed and one detail is new.** `/etc/resolv.conf` is in
   **foreign** mode — it is not resolved's stub — so the deployed resolved drop-in binds only
   resolved-routed queries. Low impact, no edit. Separately: **both 10 GbE links are down and
   wlan0 carries the default route**, which retires the "dual 10 GbE" premise that motivated
   the netdev tuning in the first place.
 
-Advisory reads still open, ungated: installed proton-cachyos build (A2). The
-linux-firmware MES revision read (A1) is satisfied by the T0-2 sweep only for ASPM; the MES
-revision itself remains an advisory read with no gate.
+Advisory reads, ungated: **A1, the lspci ASPM audit, is satisfied by T0-2.** Still open:
+**A2**, the installed proton-cachyos build, and the linux-firmware MES revision — both reads
+with no gate and no dependent item.
 
 ### T1 — User/session scope. No root, no reboot, reversible by editing one file.
 
@@ -313,8 +308,8 @@ rewrites the file wholesale, so a bad value cannot orphan.
   2000) — **that is not a regression and must not be reported as one.** The source conflict
   that made this hard is preserved in §3 for its own sake: the 600/4000 pairing is **Red
   Hat's**, not ESnet's, and ESnet recommends the defaults outright. Do not re-propose either
-  key without a squeezed column that has actually moved. Reinforcing context from T0-8: both
-  10 GbE links are down on this host and wlan0 is the default route.
+  key without a squeezed column that has actually moved, and see §4 item 3 for why the
+  "dual 10 GbE" premise behind them did not describe the deployment.
 - **T2-2 · nftables rule order — KEEP, settled.** The profile places `ct state invalid drop`
   before `iif "lo" accept`. That ordering is the one used by the Gentoo wiki's reference
   workstation ruleset and by the widely redistributed "early drop of invalid packets"
@@ -328,9 +323,8 @@ rewrites the file wholesale, so a bad value cannot orphan.
   user. The fix would be a permission drop-in, i.e. an **18th managed file** — a scope
   addition that moves three oracle counts (`SYSTEM_DESTINATIONS` 15→16, `_RY_POST_HOOKS`
   17→18 if it needs a hook, managed files 17→18), each a hard deploy gate. It is declined for
-  a second and stronger reason: `energy_uj` is world-readable-by-default only on kernels
-  predating the **PLATYPUS** mitigation, and re-opening it re-opens a documented RAPL
-  side-channel. Leaving `cpu_power` degraded is the correct trade. **A recommendation to add
+  a second and stronger reason: relaxing RAPL permissions re-opens the **PLATYPUS** side
+  channel (§3). Leaving `cpu_power` degraded is the correct trade. **A recommendation to add
   the drop-in must address PLATYPUS explicitly, not around it.**
 - **T2-4 · `amd_pstate=active` restates the CachyOS compiled default.** linux-cachyos sets
   `CONFIG_X86_AMD_PSTATE_DEFAULT_MODE=3`, and `drivers/cpufreq/Kconfig.x86` defines 3 as
@@ -349,8 +343,8 @@ rewrites the file wholesale, so a bad value cannot orphan.
 The cmdline is charset-gated (`^[A-Za-z0-9._,=-]+$`) and count-asserted at 15 — any add or
 removal updates both, `_vsb_entry_options` (L2184) asserts every non-fallback BLS entry
 carries every token, and `_vsb_sdboot_dropins` (L2116) warns when a drop-in could override
-`LINUX_OPTIONS` behind all of it. **`KERNEL_PARAMS` stays at 15: `fsck.mode` changed value,
-not membership.**
+`LINUX_OPTIONS` behind all of it. **`KERNEL_PARAMS` stays at 15** — `fsck.mode` changed value,
+not membership.
 
 - **T3-1 · `processor.max_cstate=1` — measured, then retired to KEEP by maintainer
   decision.** T0-1 returned 21.33 / 21.69 W package and 3.93 / 4.20 W core at Busy% 0.13 /
@@ -398,8 +392,7 @@ not membership.**
   token. That asymmetry is the sharp edge: the fallback gets IOMMU back but keeps the NPU
   blacklisted, which is the one combination the validator refuses to *deploy*. T0-2 sharpens
   it — the fallback is the only boot path on this host where ASPM is not disabled. Confirm the
-  window is accepted or flag it. `_vsb_entry_options` deliberately skips `*-fallback.conf`
-  (upstream sdboot-manage filters the same way), so verify will never surface this.
+  window is accepted or flag it. Verify will never surface it — see §8 for why.
 - **T4-2 · SHIPPED at 7.158.0 — `COMPRESSION_OPTIONS=(-1)` → `(-3)`.** Smaller initramfs,
   more ESP headroom; `-3` only ever shrinks the image relative to `-1`, so the only cost is
   build time, and reverting is free. **The `df -h /boot` headroom gate was never run** — it is
@@ -467,10 +460,9 @@ Flag a direct upstream contradiction as a **note**; never as a FIX.
   (94.140.14.14 / 94.140.15.15) **over DoT** since 2026-07-31, and AdGuard validates DNSSEC on
   its own resolvers. **Do not propose host-side DoT.** The router's DNS Privacy Protocol is
   WAN-side only; it does not serve DoT to LAN clients, so `DNSOverTLS=yes` on the host would
-  TLS-handshake a plaintext-only resolver and, failing closed, take DNS down. **New from
-  T0-8:** `/etc/resolv.conf` is in **foreign** mode, so the deployed resolved drop-in binds
-  only resolved-routed queries — low impact, no edit, but state it rather than implying the
-  drop-in governs every lookup. Quantify the residual LAN-segment exposure in §5 and stop.
+  TLS-handshake a plaintext-only resolver and, failing closed, take DNS down. T0-8's foreign-mode
+  result narrows this further: the drop-in is not the authority for every lookup on this
+  host. Quantify the residual LAN-segment exposure in §5 and stop.
 - **`GPU_DPM_LEVEL=high`, not `profile_peak`.** `high` forces the highest power state with
   clock and power gating still active. `profile_peak` adds mclk/pcie forcing and disables
   gating, but kernel documentation scopes `profile_*` to measurement work, ArchWiki and
@@ -708,10 +700,9 @@ stand and are not restated here.
    `MKINITCPIO_COMPRESSION_OPTIONS` moved 2 → 1 at 7.140.0, and `ENV_VARS` 10 → 9 and
    `SYSCTL_VALUES` 11 → 9 both moved after 7.155.0. What is true and worth carrying: **the
    four perf scalars have not moved since 7.130.0, twenty-eight releases.**
-5. **A generated body changed with a byte delta of zero.** `mkinitcpio.conf`
-   `COMPRESSION_OPTIONS` `-1` → `-3`: same array length, same token width, same 276 B.
-   Counts, byte anchors and the Σ total all pass across it. **Only the fence diff catches
-   this class**, and this is the first instance on record.
+5. **A generated body changed with a byte delta of zero** — `mkinitcpio.conf`
+   `COMPRESSION_OPTIONS` `-1` → `-3` (§1a). First instance on record of a change invisible to
+   counts, byte anchors and the Σ total at once.
 6. **T1-2 was closed by the artifact, for the second time in three rebases.** The previous
    edition's strongest T1/T2 candidate — moving `PROTON_ENABLE_WAYLAND=1` out of the global
    env file — was resolved by the profile removing the variable. Its upstream reading was
@@ -756,8 +747,7 @@ No auto-FIX in this section.
    router↔AdGuard hop is DoT and AdGuard validates DNSSEC. Residual exposure is scoped to the
    LAN segment and to trusting the router's answer — the AD bit is a bit any in-path party
    could set, and nothing on the host checks it. Accepted on file; state the exposure and stop
-   (T5). **Do not propose host-side DoT.** T0-8 adds one detail: `/etc/resolv.conf` is in
-   foreign mode, so the managed drop-in is not the authority for every lookup on this host.
+   (T5, which owns the host-side-DoT prohibition and the foreign-mode qualifier).
 4. **IPv6 disabled + inbound IPv4 ping accepted** — net LAN delta is `+ping −mDNS`. Avahi is
    masked (unit *and* socket) and resolved has `MulticastDNS=no`, so multicast discovery is
    fully closed. Ping-accept is an asserted regression guard, not a defect. Latent coupling:
@@ -842,11 +832,9 @@ ip -brief link show                                            # both 10 GbE lin
 ip route show default                                          # default route is wlan0
 ```
 
-The `find` forms above replace the previous edition's `**` globs. `~/ry-install/logs/**` was
-already a documented false-negative trap: logs land at
-`$HOME/ry-install/logs/<YYYY-MM-DD>/<mode>-<timestamp>-<pid>.jsonl`, and a glob that misses
-the `logs/<date>/` level returns zero hits **silently**, which reads identically to "the key
-was never emitted".
+The `find` forms above replace the previous edition's `**` globs, which silently missed the
+`logs/<date>/` level — see §7g for the log path and why a zero-hit glob reads identically to
+"the key was never emitted".
 
 **CPU / GPU state (T2/T3 baseline):**
 
@@ -975,10 +963,8 @@ outright at 7.147.0**; a brief or script that still expects it is pre-7.147.0. M
 17 (15 system + 2 user), recomputed at load; a mismatch refuses with exit 3.
 **Count these by live fish eval, never by text parsing.**
 
-**The oracle is a weak detector of content change and this rebase proves it twice over.**
-`ENV_VARS` held at 10 through the 7.154.0 FSR4 swap, and `mkinitcpio.conf` changed
-`COMPRESSION_OPTIONS` from `-1` to `-3` at 7.158.0 without moving the count *or* the byte
-anchor. Byte anchors (§7d) catch some of it; only the embedded bodies (§7e) catch all of it.
+**The oracle is a weak detector of content change** and this rebase proves it twice over
+(§1a). Byte anchors (§7d) catch some of it; only the embedded bodies (§7e) catch all of it.
 
 ### 7b. Perf scalars and their maxima
 
@@ -1191,8 +1177,8 @@ The udev rule at **639 B** and the **4,858 B** total are the anchors for any per
 change — a value substitution plus its comment edits moves both. None of the five deltas
 above is perf: the udev, cpupower and (post-removal) sysctl bodies that carry every tuned
 value are otherwise byte-identical to the previous edition. **Measure as written files**
-(`$fn > tmp; stat -c %s`); `string collect` strips 17 trailing newlines and reports 4,841 B,
-a phantom deficit that reads as anchor drift.
+(`$fn > tmp; stat -c %s`), never `string collect` — see §9 for the phantom deficit it
+produces.
 
 ### 7e. Generated bodies — all seventeen, byte-exact
 
