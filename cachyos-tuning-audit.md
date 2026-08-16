@@ -1,6 +1,6 @@
 # CachyOS Tuning Audit — Beelink GTR9 Pro (gfx1151)
 
-Pinned to `ry-install.fish` **7.158.0**. Deep-research brief: actionable items only,
+Pinned to `ry-install.fish` **7.162.2**. Deep-research brief: actionable items only,
 **ordered by implementation safety** rather than by subsystem.
 
 ---
@@ -8,40 +8,46 @@ Pinned to `ry-install.fish` **7.158.0**. Deep-research brief: actionable items o
 ## 0. Provenance
 
 Every number below was re-derived by live evaluation of the attached archive. Nothing was
-carried forward from the 7.155.0 edition unaudited: every line anchor, byte count and
+carried forward from the 7.158.0 edition unaudited: every line anchor, byte count and
 generated body was re-rendered, and the five bodies that moved were caught by diffing the
-previous edition's embedded fences against fresh generator output. **One of those five
-moved with a byte delta of zero** — see §1a.
+previous edition's embedded fences against fresh generator output. **One count moved twice
+and came back to its old value** — see §1a.
 
 ```
 ║ ARTIFACT           ║ SHA256   ║ SIZE               ║
 ║────────────────────║──────────║────────────────────║
-║ zip                ║ cc97b5a5 ║ 317,575 B          ║
-║ ry-install.fish    ║ 13a467b8 ║ 4,915 L / 292,715 B║
-║ README.md          ║ 061e3b79 ║   307 L /  18,711 B║
-║ CHANGELOG.md       ║ 91634f1b ║   131 L /   4,392 B║
+║ zip (release)      ║ d81475e6 ║ 320,167 B          ║
+║ ry-install.fish    ║ 9ff2fae0 ║ 4,919 L / 293,359 B║
+║ README.md          ║ 55695efa ║   305 L /  19,186 B║
+║ CHANGELOG.md       ║ f9ea3017 ║   156 L /   5,865 B║
 ║ LICENSE            ║ 2e1e7c8a ║    21 L /   1,069 B║
 ```
 
-Archive layout: 5 entries, `zip -0 -X` Stored, topdir `ry-install-v7_158_0`, script 0755,
-docs 0644, 316,887 B uncompressed. All three content files self-report `7.158.0`.
+Release layout: 5 entries, `zip -0 -X` Stored, topdir `ry-install-v7_162_2`, script 0755,
+docs 0644, 319,479 B uncompressed. All three content files self-report `7.162.2`. **The
+archive audited for this edition is the GitHub `main` archive** (`ry-install-main.zip`, sha
+`153d75b3`, 86,954 B Deflated, topdir `ry-install-main`, no mode bits — a git-archive zip);
+its four members are byte-identical to the release members above, so every value in this
+brief holds for both. Repackaging from `main` must re-apply 0755 to the script.
 
 **Disambiguate by zip, README or CHANGELOG hash — never by `--version`, and not by script
-hash either.** All four 7.158.0 hashes above are unique to this release, but the general
-rule stands and has fired repeatedly: 7.141.0 shipped twice with one script hash and
-7.140.0 nine times with two, and 7.151.0 → 7.153.0 are version-string-only edits of one
-another. A single script hash can cover several shipped artifacts; a zip, README or
-CHANGELOG hash cannot.
+hash either.** 7.162.0, 7.162.1 and 7.162.2 differ by two bytes of script (7.162.1, the
+`_ir_validate_counts` tripwire fix) and by README/CHANGELOG only (7.162.2) — three shipped
+artifacts inside one week; the general rule stands and has fired repeatedly: 7.141.0
+shipped twice with one script hash, 7.140.0 nine times with two, and 7.151.0 → 7.153.0 are
+version-string-only edits of one another. A single script hash can cover several shipped
+artifacts; a zip, README or CHANGELOG hash cannot.
 
-Upstream reference points re-fixed at audit time (2026-08-07). **Nothing moved in the two
-days since the 7.155.0 edition** — the version set is re-confirmed, not carried forward:
+Upstream reference points re-fixed at audit time (2026-08-15). **Two of the seven moved in
+the eight days since the 7.158.0 edition** — mainline 7.2.0-rc6 → rc7 and linux-cachyos
+7.1.6-1 → 7.1.8-1; the other five are re-confirmed, not carried forward:
 
 ```
-║ COMPONENT              ║ VERSION AT AUDIT ║ WAS (26-08-05) ║ SOURCE               ║
+║ COMPONENT              ║ VERSION AT AUDIT ║ WAS (26-08-07) ║ SOURCE               ║
 ║────────────────────────║──────────────────║────────────────║──────────────────────║
-║ Linux mainline         ║ 7.2.0-rc6        ║ unchanged      ║ torvalds/linux       ║
+║ Linux mainline         ║ 7.2.0-rc7        ║ 7.2.0-rc6      ║ torvalds/linux       ║
 ║                        ║                  ║                ║ Makefile             ║
-║ linux-cachyos          ║ 7.1.6-1          ║ unchanged      ║ CachyOS/linux-cachyos║
+║ linux-cachyos          ║ 7.1.8-1          ║ 7.1.6-1        ║ CachyOS/linux-cachyos║
 ║                        ║                  ║                ║ PKGBUILD             ║
 ║ Mesa main              ║ 26.3.0-devel     ║ unchanged      ║ mesa/mesa VERSION    ║
 ║ proton-cachyos         ║ 11.0-20260703    ║ unchanged      ║ CachyOS/proton-cachy-║
@@ -52,101 +58,119 @@ days since the 7.155.0 edition** — the version set is re-confirmed, not carrie
 ║ systemd #33579         ║ OPEN             ║ unchanged      ║ issue page           ║
 ```
 
-Because the upstream set is static, **every §3 row keeps its previous VERIFIED date except
-the three re-fetched above.** No §3 claim is invalidated by this rebase; what changed is the
-artifact, not the upstream world.
+Neither move changes a §3 verdict: the amd-pstate, ASPM, IOMMU and kernel-parameters claims
+were re-read against the 7.2.0-rc7 sources and the current linux-cachyos config on 2026-08-15
+and hold. **Rows re-fetched this rebase carry 26-08-15; every other row keeps its previous
+VERIFIED date.** What changed most is the artifact — see §1 — and two of the changes were
+made under this brief's own open items.
 
 ---
 
-## 1. Delta vs the 7.155.0 edition
+## 1. Delta vs the 7.158.0 edition
 
-### 1a. The perf surface still has not moved; five config bodies did, one of them at zero bytes
+### 1a. The perf surface still has not moved; five config bodies did, and one count round-tripped
 
-**The four perf scalars are byte-identical across twenty-eight releases, 7.130.0 →
-7.158.0.** Governor `performance`, EPP `performance`, DPM `high` and driver
+**The four perf scalars are byte-identical across thirty-two releases, 7.130.0 →
+7.162.2.** Governor `performance`, EPP `performance`, DPM `high` and driver
 `amd-pstate-epp` have not been edited once in that window. A recommendation asserting that a
 *perf* value moved in it is a stale-source error, not a finding.
 
-**Two count-oracle values DID move, and that is new.** `ENV_VARS` 10 → 9 and
-`SYSCTL_VALUES` 11 → 9. The previous edition's headline claim — "not one of these 21 values
-has moved since 7.130.0" — is retired; it was already loose, because
-`MKINITCPIO_COMPRESSION_OPTIONS` went 2 → 1 at the 7.140.0 `-T0` cut. Restated correctly:
-**the four perf scalars have not moved since 7.130.0; the oracle has moved three times, at
-7.140.0 and twice more after 7.155.0.**
+**One count-oracle value moved twice and landed where it started.** `KERNEL_PARAMS` went
+15 → 14 at 7.160.0 (`clearcpuid=umip` dropped) and 14 → 15 at 7.162.0 (`iommu=pt` added,
+`amd_iommu=off` → `amd_iommu=on`). Net count delta zero, membership changed twice, both boot
+bodies changed. The 7.158.0 lesson stands in a new form: **count parity is evidence of
+nothing — a count can round-trip.** The other twenty oracle values are unchanged (`ENV_VARS`
+9 and `SYSCTL_VALUES` 9 since the 7.155.0 → 7.158.0 window). Restated correctly: **the four
+perf scalars have not moved since 7.130.0; the oracle has moved five times, at 7.140.0,
+twice in the 7.155.0 → 7.158.0 window, and twice more since — netting to zero.**
 
-**Five of the seventeen generated bodies changed content.** Determinism 3/3 renders, sorted
-manifest sha `6bf7f8ea53c36c40` (harness-filename dependent — NOT comparable to the
-`03b0863baa9fcde2` of the previous edition; per-file content hashes are the safe form).
+**Five of the seventeen generated bodies changed content**, all five at a non-zero byte delta
+this time. Determinism 3/3 renders, sorted-manifest sha `8c6623d5db5f8b23` — computed as
+`sha256sum` over the per-generator `sha256sum` manifest sorted by generator name, so it is
+comparable only within that method (the previous editions' `6bf7f8ea53c36c40` /
+`03b0863baa9fcde2` were harness-filename dependent); per-file content hashes are the safe
+form.
 
 ```
-║ FILE                          ║ 7.155.0 ║ 7.158.0 ║ CAUSE                        ║
+║ FILE                          ║ 7.158.0 ║ 7.162.2 ║ CAUSE                        ║
 ║───────────────────────────────║─────────║─────────║──────────────────────────────║
-║ /etc/kernel/cmdline           ║   352 B ║   351 B ║ fsck.mode=force -> auto at   ║
-║                               ║         ║         ║ 7.158.0                      ║
-║ /etc/sdboot-manage.conf       ║   544 B ║   543 B ║ same token, inside           ║
+║ /etc/kernel/cmdline           ║   351 B ║   343 B ║ clearcpuid=umip removed at   ║
+║                               ║         ║         ║ 7.160.0; amd_iommu=off -> on ║
+║                               ║         ║         ║ + iommu=pt at 7.162.0        ║
+║ /etc/sdboot-manage.conf       ║   543 B ║   535 B ║ same tokens, inside          ║
 ║                               ║         ║         ║ LINUX_OPTIONS                ║
-║ /etc/mkinitcpio.conf          ║   276 B ║   276 B ║ COMPRESSION_OPTIONS -1 -> -3 ║
-║                               ║         ║         ║ at 7.158.0. ZERO byte delta  ║
-║ /etc/sysctl.d/95-ry-          ║   441 B ║   376 B ║ both net.core.netdev_budget  ║
-║ overrides.conf                ║         ║         ║ keys removed at 7.157.0      ║
-║ ~/.config/environment.d/      ║   306 B ║   282 B ║ PROTON_ENABLE_WAYLAND=1      ║
-║ 10-environment.conf           ║         ║         ║ removed after 7.155.0        ║
+║ /etc/nftables.conf            ║   729 B ║ 1,059 B ║ ICMPv6 base accept (RFC 4890 ║
+║                               ║         ║         ║ host minimum) at 7.159.0     ║
+║ /etc/modprobe.d/60-ry-        ║   183 B ║   177 B ║ BLACKLIST_AMDXDNA true ->    ║
+║ modules.conf                  ║         ║         ║ false at 7.162.0; comment-   ║
+║                               ║         ║         ║ only, no directive           ║
+║ ~/.config/MangoHud/           ║   383 B ║   555 B ║ cpu_stats commented + inert- ║
+║ MangoHud.conf                 ║         ║         ║ sensor note; > 7.158.0, <=   ║
+║                               ║         ║         ║ 7.160.0                      ║
 ║───────────────────────────────║─────────║─────────║──────────────────────────────║
-║ 17-file total                 ║ 4,949 B ║ 4,858 B ║ -91 B, none of it perf       ║
+║ 17-file total                 ║ 4,858 B ║ 5,338 B ║ +480 B, none of it perf      ║
 ```
 
-**The mkinitcpio row is the most important line in this brief.** `-1` → `-3` is a real
-configuration change to a boot-critical file. It moved **no count** (the array still has one
-member) and **no byte anchor** (both tokens are two characters wide). A count check, a byte
-check and a Σ check all pass across it. The only mechanism that catches it is a byte-exact
-diff of the embedded fence against fresh generator output — which is why §7e embeds all
-seventeen bodies and why the fence walker in §9 exists.
+**The cmdline row is the most important line in this brief.** Two membership changes to a
+boot-critical body netted to a count of 15 — the same 15 the tripwire, the README table and
+this brief all carried before. A count check passes across it; the byte anchor and the Σ
+total do move (−8 B), and the embedded fence differs. Add the 7.158.0 mkinitcpio precedent
+(content change at zero bytes and zero count) and the rule is complete: **only a byte-exact
+diff of the embedded fence against fresh generator output catches every class** — which is
+why §7e embeds all seventeen bodies and why the fence walker in §9 exists.
 
 **Three consecutive rebases have each had a change a count check could not see** — 7.155.0's
-`ENV_VARS`-held-at-10 FSR4 swap, and now a zero-delta body edit. Treat count parity as
-evidence of nothing. The other twelve bodies are byte-identical, re-rendered and diffed.
+`ENV_VARS`-held-at-10 FSR4 swap, 7.158.0's zero-delta body edit, and now a round-tripped
+count. Treat count parity as evidence of nothing. The other twelve bodies are
+byte-identical, re-rendered and diffed.
 
 ### 1b. What did change
 
 ```
-║ AREA          ║ 7.155.0    ║ 7.158.0    ║ NOTE                                 ║
+║ AREA          ║ 7.158.0    ║ 7.162.2    ║ NOTE                                 ║
 ║───────────────║────────────║────────────║──────────────────────────────────────║
-║ script        ║ 4,915 L    ║ 4,915 L    ║ -47 B, 0 L; value edits only         ║
+║ script        ║ 4,915 L    ║ 4,919 L    ║ +644 B, +4 L; anchors moved +2 to +4 ║
 ║ functions     ║ 294        ║ 294        ║ unchanged                            ║
 ║ verify fns    ║ 62 (12+50) ║ 62 (12+50) ║ identical prefix by prefix           ║
-║ sub: markers  ║ 95         ║ 95         ║ all PARENT_OK                        ║
-║ hard deps     ║ 37         ║ 37         ║ unchanged (L1535)                    ║
-║ optional deps ║ 15         ║ 15         ║ unchanged (L1544)                    ║
+║ sub: markers  ║ 95         ║ 95         ║ all PARENT_OK, re-run live           ║
+║ hard deps     ║ 37         ║ 37         ║ unchanged (L1538)                    ║
+║ optional deps ║ 15         ║ 16         ║ readlink added (L1547)               ║
 ║ banners       ║ 95         ║ 95         ║ blanks 95 == banners 95              ║
-║ generators    ║ 17         ║ 17         ║ Sigma 4,949 -> 4,858 B               ║
-║ oracle        ║ 21         ║ 21         ║ TWO values moved — see 1a            ║
-║ harness cut   ║ L4786      ║ L4786      ║ FIRST rebase where it held           ║
-║ README        ║ 309 L      ║ 307 L      ║ -5.6 % trim at 7.158.0               ║
-║ CHANGELOG     ║ 143 L      ║ 131 L      ║ big trim + docs-entry purge          ║
+║ generators    ║ 17         ║ 17         ║ Sigma 4,858 -> 5,338 B               ║
+║ oracle        ║ 21         ║ 21         ║ KERNEL_PARAMS 15 -> 14 -> 15; see 1a ║
+║ harness cut   ║ L4786      ║ L4790      ║ moved again, +4                      ║
+║ README        ║ 307 L      ║ 305 L      ║ amdxdna docs synced to false default ║
+║ CHANGELOG     ║ 131 L      ║ 156 L      ║ 7.162.2 block + range to 7.162.1     ║
 ```
 
-**Every line anchor in this edition is identical to the previous one** — the script kept its
-line count and lost 47 bytes to in-place value edits. **This does not relax the standing
-rule:** anchors moved on four of the last five rebases, once backwards. Always locate a
+**Line anchors moved again.** The header and scalar block held (L574 – L613, and the
+validator chain at L664 / L692 / L727 / L740), but everything from the generator block on
+shifted +2 to +4: `_msg_print` 1087 → 1090, `_ry_install_file` 2048 → 2051, every verify sub
++3 or +4, `_ir_validate_post_hooks` 4524 → 4528, harness cut 4786 → 4790. The 7.158.0
+"anchors did not move" note was a fact about that release, exactly as it said it was.
+Anchors have now moved on five of the last six rebases, once backwards. Always locate a
 symbol, never hardcode its line.
 
 ### 1c. Removals that must not be re-derived from a stale source
 
-Nine features are gone. Each is a **retired question**, not an open gap:
+Thirteen retirements below — twelve removed features and one closed gap. Each is a
+**retired question**, not an open item:
 
 ```
 ║ REMOVED                       ║ AT       ║ CONSEQUENCE FOR FINDINGS             ║
 ║───────────────────────────────║──────────║──────────────────────────────────────║
-║ RY_REMOTE_PLAY_PORTS + gate,  ║ 7.137.0  ║ nftables body is 729 B, SINGLE form. ║
-║ Sunshine/Steam port sets,     ║          ║ No port set to open or close. The    ║
-║ the 916 B ruleset variant     ║          ║ 5353/udp mDNS finding is retired     ║
+║ RY_REMOTE_PLAY_PORTS + gate,  ║ 7.137.0  ║ nftables body is single-form (729 B  ║
+║ Sunshine/Steam port sets,     ║          ║ then; 1,059 B since 7.159.0). No     ║
+║ the 916 B ruleset variant     ║          ║ port set to open or close. The       ║
+║                               ║          ║ 5353/udp mDNS finding is retired     ║
 ║ Preemption-model advisory,    ║ 7.139.0  ║ Profile never pinned preempt=.       ║
 ║ dmesg fetch, both cache       ║ r2       ║ Do NOT report a missing preempt      ║
 ║ globals, dmesg optional dep   ║          ║ check. Residue 0                     ║
 ║ Redundant -T0 compression flag║ 7.140.0  ║ Oracle 2 -> 1. Do NOT report this as ║
 ║                               ║          ║ a lost threading option              ║
-║ 4 dead optional-dep tokens    ║ 7.140.0  ║ Optional deps 19 -> 15. The 15 that  ║
-║                               ║ r2       ║ remain are all live call sites       ║
+║ 4 dead optional-dep tokens    ║ 7.140.0  ║ Optional deps 19 -> 15 (16 today —   ║
+║                               ║ r2       ║ readlink joined <= 7.162.1). All     ║
+║                               ║          ║ remaining are live call sites        ║
 ║ RESOLVED_DNS_SERVERS (the     ║ 7.147.0  ║ The host pins NO upstream. Do NOT    ║
 ║ AdGuard pair) + the NM        ║          ║ report a missing DNS= line or a      ║
 ║ [global-dns-domain-*] block   ║          ║ lost NM override — both are by       ║
@@ -165,17 +189,36 @@ Nine features are gone. Each is a **retired question**, not an open gap:
 ║ net.core.netdev_budget_usecs  ║          ║ on measurement (T0-5). An absent key ║
 ║ = 5000                        ║          ║ leaves the kernel default — do NOT   ║
 ║                               ║          ║ report 300/2000 as a regression      ║
+║ The missing icmpv6 accept     ║ 7.159.0  ║ ICMPv6 base accept (RFC 4890 host    ║
+║ (a gap, not a feature)        ║          ║ minimum) SHIPPED; nftables 729 ->    ║
+║                               ║          ║ 1,059 B. T4-7 CLOSED. Do NOT report  ║
+║                               ║          ║ the ruleset as IPv6-unsafe           ║
+║ cpu_stats active in the       ║ <=       ║ Shipped commented, with cpu_temp and ║
+║ MangoHud generator            ║ 7.160.0  ║ an inert-sensor note; HUD 383 ->     ║
+║                               ║          ║ 555 B. T1-1 CLOSED BY THE ARTIFACT   ║
+║ clearcpuid=umip               ║ 7.160.0  ║ KERNEL_PARAMS 15 -> 14. T3-2 CLOSED  ║
+║                               ║          ║ BY THE ARTIFACT; the boot is no      ║
+║                               ║          ║ longer tainted. Do NOT re-raise UMIP ║
+║ amd_iommu=off and             ║ 7.162.0  ║ Replaced by amd_iommu=on iommu=pt;   ║
+║ BLACKLIST_AMDXDNA=true        ║          ║ KERNEL_PARAMS 14 -> 15; modprobe     ║
+║                               ║          ║ body 183 -> 177 B (comment-only).    ║
+║                               ║          ║ Do NOT report a missing amdxdna      ║
+║                               ║          ║ blacklist or an IOMMU-off posture    ║
 ```
 
-**UNCERTAIN, and deliberately not guessed:** the exact release that dropped
-`PROTON_ENABLE_WAYLAND` is not recoverable from the shipped artifact. The installer
-CHANGELOG folds 7.139.0–7.157.0 into one range block, and the bullet carries no version.
-The bound is `> 7.155.0` and `<= 7.157.0`, because the 7.155.0 edition rendered the variable
-in its `10-environment.conf` fence. Do not state a release for it.
+**UNCERTAIN, and deliberately not guessed — three releases are not recoverable from the
+shipped artifact.** The installer CHANGELOG now folds 7.139.0–7.162.1 into one range block
+and none of these bullets carries a version. (1) `PROTON_ENABLE_WAYLAND`: bound `> 7.155.0`
+and `<= 7.157.0`, because the 7.155.0 edition rendered the variable in its
+`10-environment.conf` fence. (2) The MangoHud CPU keys: bound `> 7.158.0` (this brief's
+previous edition rendered `cpu_stats` active) and `<= 7.160.0` (the bullet sat in the
+7.139.0–7.160.0 range block of the 7.161.0 changelog). (3) The `--check` stale-drop-in
+hoist (T4-6): bound `> 7.158.0` and `<= 7.162.1`. Do not state a release for any of them.
 
-**The pattern to name: two of the last three rebases retired an open finding because the
-artifact moved under it, not because new evidence arrived.** T1-3 at 7.154.0, T1-2 after
-7.155.0. Re-render the archive before carrying any open item forward.
+**The pattern to name: the artifact keeps retiring the brief's own open items, not new
+evidence.** T1-3 at 7.154.0, T1-2 after 7.155.0, and four more in this window — T1-1 (the
+CPU keys, `<= 7.160.0`), T3-2 (`clearcpuid`, 7.160.0), T4-6 (the hoist) and T4-7 (ICMPv6,
+7.159.0). Re-render the archive before carrying any open item forward.
 
 ---
 
@@ -185,12 +228,12 @@ The operative section. Tiers ascend by blast radius: T0 changes nothing, T5 must
 touched. **Work top-down; do not act on a lower tier while a higher tier that gates it is
 unrun.** Every recommendation must carry a tier.
 
-**All eight T0 gates have now returned.** That is the structural change in this edition: for
-twenty-five releases the brief carried eight unrun observations gating eleven lower-tier
-items, and every one of them is now answered. Five gated items resolved into a shipped
-change or a recorded maintainer KEEP; one turned out to be measuring an inert setting; one
-returned an answer that closes a question permanently. **A gate result is history, not an
-action** — T0 below is a results table, and the actions it unblocked live in their own tiers.
+**All eight T0 gates returned at the 7.158.0 edition and the results stand** — re-run only
+the §6 regression forms. The structural change in THIS edition is on the artifact's side:
+between 7.159.0 and 7.162.0 it closed four of the queue's own items — T1-1 (the MangoHud CPU
+keys), T3-2 (`clearcpuid`), T4-6 (the stale-drop-in hoist) and T4-7 (the ICMPv6 accept) —
+leaving the queue with **no open change item**. **A gate result is history, not an action** —
+T0 below is a results table, and what it unblocked lives in its own tier.
 
 ### T0 — RETURNED. Results, not actions.
 
@@ -257,26 +300,27 @@ action** — T0 below is a results table, and the actions it unblocked live in t
   wlan0 carries the default route**, which retires the "dual 10 GbE" premise that motivated
   the netdev tuning in the first place.
 
-Advisory reads, ungated: **A1, the lspci ASPM audit, is satisfied by T0-2.** Still open:
-**A2**, the installed proton-cachyos build, and the linux-firmware MES revision — both reads
-with no gate and no dependent item.
+Advisory reads, ungated: **A1, the lspci ASPM audit, is satisfied by T0-2**, and **the MES
+revision read has returned** — the unit reports MES firmware 0x91 (KIQ 0x75), past the 0x86
+gfx1151 hang fix (host capture, 2026-08-14). Still open: **A2**, the installed
+proton-cachyos build — one read, no gate, no dependent item.
 
 ### T1 — User/session scope. No root, no reboot, reversible by editing one file.
 
-- **T1-1 · MangoHud CPU keys — the one open change item in this brief.** T0-4 supplied the
-  pair (`k10temp,temp1_input`) but also closed the path: `cpu_custom_temp_sensor` requires
-  `cpu_temp`, and MangoHud **#1794 is still OPEN** (re-confirmed 2026-08-07), so enabling
-  `cpu_temp` on Zen 5 zeroes `cpu_power`. The resolved shape is therefore **not** to enable
-  the custom sensor but to **ship the CPU keys commented**, recording the finding in the
-  file where the next reader will meet it:
-  `"cpu_stats"` becomes `"# cpu_stats intentionally disabled — enable for CPU load in the HUD"`,
-  the existing `cpu_temp` comment stays, and a third line records the sensor pair and why it
-  is not used. The HUD stops showing CPU load; that is the accepted cost.
-  **Measured against the 7.155.0 base: script +204 B / +1 L, HUD body 383 → 575 B, no oracle
-  move.** The MangoHud generator is byte-identical at 7.158.0, so the **body** figures
-  re-base cleanly; the **script** figure does not — 292,715 B is the new base, not 292,762 B.
-  **Must ship in lockstep with the standalone `mangohud-gtr9-pro` archive**, which carries the
-  same file. IMPACT Low · RISK Low.
+- **T1-1 · CLOSED BY THE ARTIFACT — the CPU keys shipped commented, in a release the
+  changelog does not name (`> 7.158.0`, `<= 7.160.0`).** The generator now emits `cpu_stats`
+  commented, keeps the `cpu_temp` comment, and carries a REDESIGNED third line —
+  `cpu_custom_temp_sensor is inert here — MangoHud reads apu_cpu_temp from gpu_metrics
+  before any hwmon lookup` — superseding this brief's `k10temp,temp1_input` framing. The
+  pair T0-4 supplied is real and **unused on this hardware**: MangoHud master `src/cpu.cpp`
+  (re-read 2026-08-15) short-circuits `UpdateCpuTemp()` to the APU `gpu_metrics` value on
+  any APU before a hwmon file is opened, and `InitCpuPowerData()` reaches the APU metric for
+  `cpu_power` because Zen 5 `k10temp` exposes no power inputs — RAPL is never consulted, so
+  #1794's reported mechanism (still OPEN, re-confirmed 2026-08-15) is moot for this box as
+  shipped. Emitted HUD is **555 B / 22 L** (header + 18 active + 3 comment lines); the 575 B
+  prediction assumed the k10temp text and is void. **Lockstep remainder: the standalone
+  `mangohud-gtr9-pro` archive is now DIVERGENT** — its conf still carries `cpu_stats` active;
+  reconcile is owned there, toward the installer. IMPACT n/a · RISK n/a.
 - **T1-2 · CLOSED BY THE ARTIFACT.** The previous edition called
   `PROTON_ENABLE_WAYLAND=1`-in-the-global-env-file "the strongest single T1/T2 candidate in
   the brief". The profile then removed it outright, dropping `ENV_VARS` 10 → 9. Upstream's
@@ -294,7 +338,7 @@ with no gate and no dependent item.
   one-time `.ry.orig`. T0-7 found **no user-scope `.ry.orig` on this host**, which is the
   correct outcome for files that had no pre-existing content — absence is not evidence the
   preserve is broken. The *first* hand-edit is preserved, every subsequent one is silently
-  overwritten by design. Both land 0600 by design (`_ry_install_file` L2048 sets 0644, then
+  overwritten by design. Both land 0600 by design (`_ry_install_file` L2051 sets 0644, then
   0600 when `use_sudo` is false). Do not raise the mode as drift.
 
 ### T2 — Managed config values. Root, no reboot, self-heals on the next deploy.
@@ -331,8 +375,9 @@ rewrites the file wholesale, so a bad value cannot orphan.
   **Active (EPP)**. The cmdline token therefore changes nothing on the kernel this host
   actually runs. **KEEP** — the profile does not own the kernel package, the mode is a
   build-time choice that a CachyOS rebuild could flip, and the token costs one cmdline slot.
-  It is belt-and-braces, not load-bearing. Contrast T3-4, where the equivalent config option
-  is explicitly **not** set and T0-2 has now measured the token doing real work.
+  It is belt-and-braces, not load-bearing. Contrast T3-4 — and, since 7.162.0, `iommu=pt`
+  (T3-5) — where the equivalent config option is explicitly **not** set and the cmdline token
+  is what switches the behavior; T0-2 measured the ASPM token doing real work.
 - **T2-5 · `VKD3D_CONFIG=descriptor_heap` removal — validated, closed.** Mesa main
   (26.3.0-devel) documents `RADV_DEBUG=noheap` as the switch that *disables*
   `VK_EXT_descriptor_heap`, and `heap` no longer appears in the `RADV_EXPERIMENTAL` list.
@@ -341,10 +386,12 @@ rewrites the file wholesale, so a bad value cannot orphan.
 ### T3 — Kernel command line. Root + reboot. Reversible, but costs a boot cycle.
 
 The cmdline is charset-gated (`^[A-Za-z0-9._,=-]+$`) and count-asserted at 15 — any add or
-removal updates both, `_vsb_entry_options` (L2184) asserts every non-fallback BLS entry
-carries every token, and `_vsb_sdboot_dropins` (L2116) warns when a drop-in could override
-`LINUX_OPTIONS` behind all of it. **`KERNEL_PARAMS` stays at 15** — `fsck.mode` changed value,
-not membership.
+removal updates both, `_vsb_entry_options` (L2187) asserts every non-fallback BLS entry
+carries every token, and `_vsb_sdboot_dropins` (L2119) warns when a drop-in could override
+`LINUX_OPTIONS` behind all of it. **`KERNEL_PARAMS` is back at 15** — membership changed
+twice this window (`clearcpuid=umip` out at 7.160.0; `amd_iommu=off` → `amd_iommu=on` plus
+`iommu=pt` at 7.162.0) and the count round-tripped; the tripwire cost of that is recorded in
+§7a.
 
 - **T3-1 · `processor.max_cstate=1` — measured, then retired to KEEP by maintainer
   decision.** T0-1 returned 21.33 / 21.69 W package and 3.93 / 4.20 W core at Busy% 0.13 /
@@ -353,15 +400,16 @@ not membership.
   idle-exit latency. **Do not re-propose removal on power grounds without a new measurement
   that beats these numbers.** The 85 W PPT caps peak regardless, so the metric remains idle,
   not the load ceiling.
-- **T3-2 · `clearcpuid=umip` — retired to KEEP by maintainer decision, despite the taint.**
-  Re-confirmed against mainline 7.2.0-rc6: `clearcpuid` has **zero occurrences** in
-  `Documentation/admin-guide/kernel-parameters.txt` while the code still parses it —
-  undocumented-but-live, with no deprecation warning and no doc contract. It also sets
-  `TAINT_CPU_OUT_OF_SPEC`. On the evidence it is the strongest removal candidate in the
-  cmdline set; the owner has weighed descriptor-table-base leak plus support posture against
-  `umip_printk` stutter and kept it. **Record the trade, do not re-litigate it.** The string
-  form is deliberate — CPUID bit numbers shift between kernels, the name does not; never
-  propose the numeric `clearcpuid=514`.
+- **T3-2 · CLOSED BY THE ARTIFACT at 7.160.0 — `clearcpuid=umip` removed; the KEEP decision
+  reversed by the same authority that made it.** The current boot is untainted (host
+  bugreport, 2026-08-14; the immediately previous boot still carried the token and the
+  taint). The changelog's stated ground: 64-bit `SGDT`/`SIDT`/`SMSW` have been emulated
+  since kernel 5.4, so the Wine/Proton rationale was dead. Re-confirmed against mainline
+  7.2.0-rc7: `clearcpuid` still has **zero occurrences** in `kernel-parameters.txt` while
+  the code parses it. **Re-add trigger, recorded so the trade is never re-derived from
+  scratch: a NAMED title regresses — record the title.** If it ever returns, the string form
+  stays deliberate (CPUID bit numbers shift between kernels; never the numeric
+  `clearcpuid=514`).
 - **T3-3 · SHIPPED at 7.158.0 — `fsck.mode=force` → `auto`.** T0-3 established the root
   filesystem is **ext4**, so the previous edition's "largely inert on a Btrfs root" reading
   was wrong: `force` ran a full check on **every** boot. `fsck.repair=yes` stays. Neither key
@@ -382,17 +430,36 @@ not membership.
   the pair away.** `pcie_aspm=off` is documented as "don't touch ASPM configuration at all"
   and does NOT disable it — never propose it as an equivalent. mt76 now force-disables ASPM on
   MT7927 hardware regardless of the param; MT7925 is not covered by that quirk.
+- **T3-5 · `amd_iommu=on` is not a value the parser accepts — INFO, keep with the note.**
+  `parse_amd_iommu_options()` (mainline `drivers/iommu/amd/init.c`, read 2026-08-15) matches
+  fullflush / force_enable / off / force_isolation / pgtbl_v1 / pgtbl_v2 / irtcachedis /
+  nohugepages / v2_pgsizes_only — no `on` — and logs `AMD-Vi: Unknown option - 'on'` for
+  anything else; `kernel-parameters.txt` lists the same value set. The IOMMU initializes
+  **by default** when hardware is present, so enablement never needed a token: **`iommu=pt`
+  is the load-bearing half** — documented (equivalent to `iommu.passthrough=1`) and switching
+  the default domain from the compiled DMA-lazy default (`IOMMU_DEFAULT_DMA_LAZY=y`,
+  `IOMMU_DEFAULT_PASSTHROUGH` unset in the CachyOS config) to passthrough. Cost of the extra
+  token: one boot-time notice line, nothing else — the 2026-08-14 host capture shows the pair
+  live with `amdxdna` loading NPU firmware. Dropping `amd_iommu=on` (keeping `iommu=pt`)
+  would save the notice at the cost of the documented reverse-switch symmetry
+  (`amd_iommu=off` ↔ `on`) and a KERNEL_PARAMS count edit. IMPACT Low · RISK Low — a note,
+  not a FIX.
 
 ### T4 — Boot chain, firewall handoff, and detector severity. Reboot + recovery exposure.
 
-- **T4-1 · Fallback-entry exposure — still open.** `LINUX_FALLBACK_OPTIONS="quiet"` strips all
-  15 params, so the fallback boots with IOMMU **on**, IPv6 **enabled** under an IPv4-only
-  ruleset, and ASPM at firmware default with the MT7925 endpoint option absent — while the
-  modprobe amdxdna blacklist *remains* active, because it is a file rather than a cmdline
-  token. That asymmetry is the sharp edge: the fallback gets IOMMU back but keeps the NPU
-  blacklisted, which is the one combination the validator refuses to *deploy*. T0-2 sharpens
-  it — the fallback is the only boot path on this host where ASPM is not disabled. Confirm the
-  window is accepted or flag it. Verify will never surface it — see §8 for why.
+- **T4-1 · Fallback-entry exposure — still open, and 7.159.0–7.162.0 redrew it.**
+  `LINUX_FALLBACK_OPTIONS="quiet"` still strips all 15 params, but the old sharp edge is
+  gone: the refused-pair asymmetry (fallback IOMMU on while the amdxdna blacklist file
+  stayed active) cannot occur — the modprobe body is comment-only under
+  `BLACKLIST_AMDXDNA=false`, and the ICMPv6 base accept shipped at 7.159.0 precisely
+  because the fallback boots with IPv6 up (the generator's own comment says so). What the
+  fallback still differs on: IOMMU in **translated DMA-lazy** mode rather than passthrough
+  (more isolation, more DMA overhead — the inversion of the tuned entry); IPv6 enabled,
+  now behind a ruleset that handles it; ASPM at firmware default with the MT7925 endpoint
+  option absent — still the only boot path on this host where ASPM is not disabled (T0-2);
+  no C-state cap; `zswap` back on (vendor `CONFIG_ZSWAP_DEFAULT_ON=y`) in front of the zram
+  swap path, stacking two compression layers; default fsck keys. Confirm the window is
+  accepted or flag it. Verify will never surface it — see §8 for why.
 - **T4-2 · SHIPPED at 7.158.0 — `COMPRESSION_OPTIONS=(-1)` → `(-3)`.** Smaller initramfs,
   more ESP headroom; `-3` only ever shrinks the image relative to `-1`, so the only cost is
   build time, and reverting is free. **The `df -h /boot` headroom gate was never run** — it is
@@ -421,9 +488,9 @@ not membership.
   should be validated against current nftables packaging. Log keys: `UFW_MASK_DEFERRED`,
   `UFW_RULE_FLUSH_OK|FAIL|SKIP`, `SECURITY_POSTURE`.
 - **T4-5 · Orphan-detector severity — a design question, not a gap.** Three detectors ship and
-  none sets DRIFT: `_vss_modprobe` (L2271) WARNs on unmanaged `60-ry-*.conf` drop-ins,
-  `_vss_orphan_masks` (L2414) INFOs on masked units absent from `$MASK`, and
-  `_vsb_sdboot_dropins` (L2116) WARNs on sdboot-manage drop-ins. `--check` records
+  none sets DRIFT: `_vss_modprobe` (L2275) WARNs on unmanaged `60-ry-*.conf` drop-ins,
+  `_vss_orphan_masks` (L2418) INFOs on masked units absent from `$MASK`, and
+  `_vsb_sdboot_dropins` (L2119) WARNs on sdboot-manage drop-ins. `--check` records
   `MODPROBE_STALE_DROPIN` / `MASK_ORPHAN` / `SDBOOT_DROPIN_PRESENT` to JSONL only. The
   reasoning on file: a re-run cannot clear any of them, so exit 10 would go permanently
   non-zero and train the operator to ignore exit 10 entirely. Mask ownership is genuinely
@@ -432,18 +499,25 @@ not membership.
   in a long `--verify` run is easy to miss and JSONL is only read deliberately. Any
   recommendation to promote one to DRIFT must address the desensitization argument explicitly
   and must say which of the three it applies to — they are not equally attributable.
-- **T4-6 · `_check_record_orphans` (L2589) sits after the sudo/systemctl preflight bail.** A
-  stale drop-in is detectable with `find` alone — no privilege — yet the record is withheld
-  when `sudo -n` is not cached. Consistent with `--check` being sudo-gated by contract, but it
-  is a privilege-free signal withheld for a privilege reason. Assess whether the sweep should
-  be hoisted above the bail. Its *placement inside the mode* is already correct and
-  deliberate: it runs before the phase loop, because at the tail of `_check_phase_*` it was
-  skipped whenever preflight bailed. Do not re-propose that move.
-- **T4-7 · LOW, open — the nftables ruleset is IPv6-unsafe if `ipv6.disable=1` is ever
-  removed.** `table inet` with `policy drop` covers IPv6, but the ruleset carries **no
-  `icmpv6` accept rule**, so NDP / RA / MLD would be silently dropped and IPv6 would fail with
-  no diagnostic. Nothing enforces the coupling in either direction. Inert while IPv6 is off.
-  Fix is an `icmpv6` accept line (inert today) or a preflight assert that refuses the pair.
+- **T4-6 · CLOSED BY THE ARTIFACT — the privilege-free sweep now runs before the sudo
+  bail.** `_ry_do_check` (L2615) records `MODPROBE_STALE_DROPIN` via `_ry_stale_ry_dropins`
+  on its first working line, ahead of the `sudo -n` gate — its inline comment names the
+  design (`privilege-free: recorded before the sudo gate can bail`); the changelog bullet
+  sits in the folded range, release unrecoverable (`> 7.158.0`, `<= 7.162.1`).
+  `_check_record_orphans` (L2593) — the masked-unit half, which genuinely needs systemctl —
+  stays after the bail, which is now the correct split rather than a withheld signal. Do not
+  re-raise.
+- **T4-7 · CLOSED — SHIPPED at 7.159.0, with both remedies at once.** The ruleset carries
+  the ICMPv6 base accept — ten types: `echo-request`; `destination-unreachable`,
+  `packet-too-big`, `time-exceeded`, `parameter-problem` (the error/PMTUD class); NDP
+  RS/RA/NS/NA; `mld-listener-query` — the RFC 4890 host-minimum shape, with replies and
+  reports riding `ct established` or the accept-all output policy. Inert while
+  `ipv6.disable=1` holds; live on the fallback entry, which is why it exists. `_vss_nft`
+  (L2269) now hard-asserts `icmpv6 type` alongside the ping accept, and the old preflight
+  refusal of the nftables↔`ipv6.disable` pair is a WARN in `_ir_validate_keys` (L708) —
+  re-probed: shipped set silent, rc 0; with `ipv6.disable=1` removed, rc 0 and the
+  dual-stack warn fires (QUIET-gated in the harness — §9). Do not re-raise IPv6-unsafety,
+  and do not propose removing the accept as dead code.
 - **T4-8 · INFO, maintenance-only.** The `_RY_POST_HOOKS` boot entry keys on the glob
   `/boot/*`, so any future managed file under `/boot` would silently route to the `loader`
   hook rather than getting its own. Inert today — `loader.conf` is the only `/boot`
@@ -477,9 +551,11 @@ Flag a direct upstream contradiction as a **note**; never as a FIX.
   currently blocks the write. Do not file the redundancy as a defect — it is a hotplug-safe
   assertion of a state the governor already imposes, and it is the only mechanism that
   survives a CPU hotplug event.
-- **`processor.max_cstate=1` and `clearcpuid=umip` are protected by maintainer decision**, not
-  by absence of evidence. Both were measured or documented against, both were kept. See T3-1
-  and T3-2. A recommendation to remove either must argue against the recorded decision.
+- **`processor.max_cstate=1` is protected by maintainer decision**, not by absence of
+  evidence — measured (T0-1) and kept; a removal must argue against the recorded decision
+  (T3-1). `clearcpuid=umip`, its former companion here, shows the other outcome: the
+  maintainer reversed his own KEEP at 7.160.0, and the recorded trade is what made the
+  reversal free to re-derive (T3-2).
 - **No cuts from the script.** `WINEDEBUG=-all`, BlueZ `AutoEnable`, NM `wifi.backend`,
   `cachyos-gaming-meta`, `MODULES=(amdgpu)`, `lib32-mesa` all stay.
 - **The PKGS_ADD orphan is not to be "fixed" with a state file.** A package dropped from
@@ -492,7 +568,9 @@ Flag a direct upstream contradiction as a **note**; never as a FIX.
   comment survives. Deploy / `--check` / `--verify` run on any kernel and any Mesa. Do not
   treat "no floor" as an oversight; treat it as a posture to evaluate.
 - **Removed and still absent — each is a validation question, never a candidate:**
-  `nowatchdog`, `tsc=reliable`, `8250.nr_uarts=0` (cmdline); `AMD_VULKAN_ICD`, `DXVK_LOG_PATH`,
+  `nowatchdog`, `tsc=reliable`, `8250.nr_uarts=0`, `clearcpuid=umip` (7.160.0, re-add
+  trigger in T3-2), `amd_iommu=off` (7.162.0 — its return with `BLACKLIST_AMDXDNA=false`
+  is a preflight refusal) (cmdline); `AMD_VULKAN_ICD`, `DXVK_LOG_PATH`,
   `VKD3D_CONFIG`, `PROTON_ENABLE_WAYLAND` (env); `ddcutil`, `git-delta` (packages);
   `modemmanager.service` (mask); both `net.core.netdev_budget` keys (sysctl);
   `RY_REMOTE_PLAY_PORTS` and its port sets (7.137.0); the preemption advisory (7.139.0 r2);
@@ -502,9 +580,10 @@ Flag a direct upstream contradiction as a **note**; never as a FIX.
   actively swept for). **Standing precedent:** `mt7925e.disable_aspm=1` was removed at
   7.102.x and re-added at 7.129.0 — removals are not permanent, but a re-add needs the same
   evidence bar as a FIX.
-- **Do not re-add** ICMPv6/NDP rules without restoring IPv6 (T4-7 is the tracked form of that
-  question); do not flag inbound-ping accept (`_vss_nft` hard-fails on its absence,
-  `_vrsv_nft_assert_ping` warns live); do not propose sleep-hook re-assert workarounds (all
+- **Do not remove** the ICMPv6 base accept as dead code under `ipv6.disable=1` — it shipped
+  at 7.159.0 for the fallback entry (T4-7, closed); do not flag inbound-ping accept
+  (`_vss_nft` hard-fails on its absence, `_vrsv_nft_assert_ping` warns live); do not
+  propose sleep-hook re-assert workarounds (all
   five sleep targets are masked, so there is no resume path and the udev `ACTION=="add"` rule
   is the only event that matters); do not flag a low MangoHud `vram` reading on UMA (it
   reports the BIOS carveout only — `ram` carries the shared pool); do not propose annotating
@@ -516,37 +595,38 @@ Flag a direct upstream contradiction as a **note**; never as a FIX.
 ## 3. Settled — do not re-research
 
 Confirmed from primary sources. Re-verify only if a citation is challenged. The **VERIFIED**
-column is the date the claim was last checked against the live source. Three rows were
-re-fetched on **2026-08-07** for this rebase (the version set and both issue states); every
-other row is carried forward with its previous date, because the upstream world did not move
-between 2026-08-05 and 2026-08-07.
+column is the date the claim was last checked against the live source. Rows carrying
+**26-08-15** were re-fetched for this rebase — the amd-pstate mechanics against 7.2.0-rc7,
+the kernel-parameters entries, the AMD IOMMU parser and `iommu=` docs, the CachyOS config,
+both issue states, the MES log, the proton-cachyos release list, and the MangoHud CPU
+sources behind T1-1's closure; every other row is carried forward with its previous date.
 
 ```
 ║ CLAIM                          ║ VERDICT / SOURCE                    ║ VERIFIED ║
 ║────────────────────────────────║─────────────────────────────────────║──────────║
-║ Does the performance governor  ║ YES. amd-pstate.c mainline:         ║ 26-08-05 ║
-║ reject a non-max EPP write?    ║ epp > 0 && policy ==                ║          ║
+║ Does the performance governor  ║ YES. amd-pstate.c mainline: epp > 0 ║ 26-08-15 ║
+║ reject a non-max EPP write?    ║ && policy ==                        ║          ║
 ║                                ║ CPUFREQ_POLICY_PERFORMANCE returns  ║          ║
 ║                                ║ -EBUSY. Writing "performance" maps  ║          ║
 ║                                ║ to epp 0 and IS accepted, so the    ║          ║
 ║                                ║ udev rule lands as a redundant      ║          ║
 ║                                ║ no-op. Rejection is pr_debug —      ║          ║
 ║                                ║ never in default dmesg              ║          ║
-║ Available-preferences readout  ║ Under the performance policy the    ║ 26-08-05 ║
+║ Available-preferences readout  ║ Under the performance policy the    ║ 26-08-15 ║
 ║ under performance policy       ║ sysfs file emits ONLY "performance" ║          ║
-║ dynamic_epp availability       ║ CLOSED. Ships since 7.1 and         ║ 26-08-05 ║
-║                                ║ linux-cachyos builds 7.1.6, so it   ║          ║
+║ dynamic_epp availability       ║ CLOSED. Ships since 7.1 and         ║ 26-08-15 ║
+║                                ║ linux-cachyos builds 7.1.8, so it   ║          ║
 ║                                ║ IS present on this host. Kernel     ║          ║
 ║                                ║ default FALSE (static bool). When   ║          ║
 ║                                ║ enabled it blocks ALL manual EPP    ║          ║
 ║                                ║ writes with -EBUSY. T0-6 read       ║          ║
 ║                                ║ "disabled" live on this host        ║          ║
-║ amd_dynamic_epp= boot param    ║ DOCUMENTED in mainline kernel-      ║ 26-08-05 ║
+║ amd_dynamic_epp= boot param    ║ DOCUMENTED in mainline kernel-      ║ 26-08-15 ║
 ║                                ║ parameters.txt: disable | enable.   ║          ║
 ║                                ║ Profile does not set it and should  ║          ║
 ║                                ║ not. If a future default flips, the ║          ║
 ║                                ║ udev EPP write breaks               ║          ║
-║ amd_pstate default mode on     ║ Kconfig.x86 X86_AMD_PSTATE_DEFAULT_ ║ 26-08-05 ║
+║ amd_pstate default mode on     ║ Kconfig.x86 X86_AMD_PSTATE_DEFAULT_ ║ 26-08-15 ║
 ║ CachyOS                        ║ MODE: 3 = Active (EPP). CachyOS     ║          ║
 ║                                ║ ships =3, so amd_pstate=active      ║          ║
 ║                                ║ RESTATES the compiled default       ║          ║
@@ -557,19 +637,39 @@ between 2026-08-05 and 2026-08-07.
 ║                                ║ the "since 4.2" figure on           ║          ║
 ║                                ║ kernelconfig.io is a database-floor ║          ║
 ║                                ║ artifact                            ║          ║
-║ Is the ASPM cmdline token      ║ YES, and now measured. CachyOS sets ║ 26-08-05 ║
+║ Is the ASPM cmdline token      ║ YES, and now measured. CachyOS sets ║ 26-08-15 ║
 ║ load-bearing on CachyOS?       ║ PCIEASPM_DEFAULT=y and              ║ + T0-2   ║
-║                                ║ PCIEASPM_PERFORMANCE is NOT set.    ║          ║
-║                                ║ T0-2: every link on this board      ║          ║
-║                                ║ reads LnkCtl ASPM Disabled          ║          ║
-║ pcie_aspm=off semantics        ║ "Don't touch ASPM configuration at  ║ 26-08-05 ║
+║                                ║ PCIEASPM_PERFORMANCE is NOT set     ║          ║
+║                                ║ (config re-read 26-08-15). T0-2:    ║          ║
+║                                ║ every link on this board reads      ║          ║
+║                                ║ LnkCtl ASPM Disabled                ║          ║
+║ pcie_aspm=off semantics        ║ "Don't touch ASPM configuration at  ║ 26-08-15 ║
 ║                                ║ all. Leave any configuration done   ║          ║
 ║                                ║ by firmware unchanged." Does NOT    ║          ║
 ║                                ║ disable ASPM                        ║          ║
-║ clearcpuid documentation state ║ ZERO occurrences in mainline        ║ 26-08-05 ║
-║                                ║ kernel-parameters.txt while the     ║          ║
+║ clearcpuid documentation state ║ ZERO occurrences in mainline        ║ 26-08-15 ║
+║                                ║ kernel- parameters.txt while the    ║          ║
 ║                                ║ code still parses it. Also sets     ║          ║
-║                                ║ TAINT_CPU_OUT_OF_SPEC               ║          ║
+║                                ║ TAINT_CPU_OUT_OF_SPEC. The profile  ║          ║
+║                                ║ stopped shipping the token at       ║          ║
+║                                ║ 7.160.0 (T3-2)                      ║          ║
+║ amd_iommu=on parser status     ║ NOT a parsed value.                 ║ 26-08-15 ║
+║                                ║ parse_amd_iommu_ options() accepts  ║          ║
+║                                ║ fullflush / force_enable / off /    ║          ║
+║                                ║ force_isolation / pgtbl_v1 /        ║          ║
+║                                ║ pgtbl_v2 / irtcachedis /            ║          ║
+║                                ║ nohugepages / v2_pgsizes_only;      ║          ║
+║                                ║ anything else logs "AMD-Vi: Unknown ║          ║
+║                                ║ option". IOMMU init is the hardware ║          ║
+║                                ║ default — see T3-5                  ║          ║
+║ iommu=pt semantics on CachyOS  ║ LOAD-BEARING. Documented: pt =      ║ 26-08-15 ║
+║                                ║ passthrough default domain, equal   ║          ║
+║                                ║ to iommu.passthrough=1. CachyOS     ║          ║
+║                                ║ ships IOMMU_DEFAULT_DMA_LAZY=y with ║          ║
+║                                ║ IOMMU_DEFAULT_PASSTHROUGH unset, so ║          ║
+║                                ║ the token is what switches it.      ║          ║
+║                                ║ DRM_ACCEL_AMDXDNA=m — the NPU       ║          ║
+║                                ║ driver exists to load               ║          ║
 ║ mt7925e.disable_aspm exists    ║ YES. mt76/mt7925/pci.c module_param ║ 26-08-05 ║
 ║                                ║ _named, perm 0644, calls            ║          ║
 ║                                ║ mt76_pci_disable_aspm() at probe    ║          ║
@@ -578,13 +678,15 @@ between 2026-08-05 and 2026-08-07.
 ║                                ║ separate quirk; MT7925 is not       ║          ║
 ║ RTL8127 in r8169               ║ Present in mainline r8169_main.c;   ║ 26-07-27 ║
 ║                                ║ first landed v6.16, absent at v6.15 ║          ║
-║ PROTON_FSR4_UPGRADE currency   ║ MOOT — REMOVED at 7.154.0 with      ║ 26-08-05 ║
+║ PROTON_FSR4_UPGRADE currency   ║ MOOT — REMOVED at 7.154.0 with      ║ 26-08-15 ║
 ║                                ║ PROTON_FSR4_RDNA3_UPGRADE, because  ║          ║
 ║                                ║ proton-cachyos 11.0-20260702+       ║          ║
 ║                                ║ copies amdxcffx64.dll itself.       ║          ║
 ║                                ║ FSR4_WATERMARK=1 ships instead and  ║          ║
-║                                ║ is a VERIFICATION variable. Do not  ║          ║
-║                                ║ re-raise the RDNA3 workaround       ║          ║
+║                                ║ is a VERIFICATION variable.         ║          ║
+║                                ║ 11.0-20260703 is still the latest   ║          ║
+║                                ║ release. Do not re-raise the RDNA3  ║          ║
+║                                ║ workaround                          ║          ║
 ║ PROTON_ENABLE_WAYLAND scope    ║ MOOT — REMOVED from ENV_VARS after  ║ 26-07-27 ║
 ║                                ║ 7.155.0. Upstream framing stands    ║          ║
 ║                                ║ (per-game; aliased PROTON_USE_      ║          ║
@@ -592,7 +694,7 @@ between 2026-08-05 and 2026-08-07.
 ║                                ║ for Steam Input under winewayland)  ║          ║
 ║                                ║ but describes nothing this profile  ║          ║
 ║                                ║ sets                                ║          ║
-║ ntsync currency                ║ CONFIG_NTSYNC=m in linux-cachyos    ║ 26-08-05 ║
+║ ntsync currency                ║ CONFIG_NTSYNC=m in linux-cachyos    ║ 26-08-15 ║
 ║                                ║ (module, not builtin). ntsync is    ║          ║
 ║                                ║ the default; PROTON_NO_NTSYNC=1 is  ║          ║
 ║                                ║ the opt-out. Profile neither sets   ║          ║
@@ -603,13 +705,27 @@ between 2026-08-05 and 2026-08-07.
 ║                                ║ the RADV_EXPERIMENTAL list          ║          ║
 ║ MESA_SHADER_CACHE_MAX_SIZE     ║ Documented; number + K/M/G suffix.  ║ 26-07-27 ║
 ║ accepts 16G                    ║ Default 1 GB if unset               ║          ║
-║ MangoHud cpu_custom_temp_      ║ CURRENT. Form is <hwmon>,<input>.   ║ 26-07-27 ║
-║ sensor                         ║ T0-4 supplies the pair for this     ║ + T0-4   ║
-║                                ║ host: k10temp,temp1_input           ║          ║
-║ MangoHud #1794                 ║ STILL OPEN — cpu_power reads 0 when ║ 26-08-07 ║
-║                                ║ cpu_temp is active on Zen 5. This   ║          ║
-║                                ║ is why T1-1 comments the CPU keys   ║          ║
-║                                ║ instead of enabling the sensor      ║          ║
+║ MangoHud cpu_custom_temp_      ║ CURRENT as an option; INERT on this ║ 26-08-15 ║
+║ sensor                         ║ box. Form is <hwmon>,<input> and    ║ + T0-4   ║
+║                                ║ T0-4 supplies k10temp,temp1_input — ║          ║
+║                                ║ but UpdateCpuTemp() short-circuits  ║          ║
+║                                ║ to the APU gpu_metrics value on any ║          ║
+║                                ║ APU before a hwmon file is read     ║          ║
+║                                ║ (master src/cpu.cpp)                ║          ║
+║ MangoHud cpu_power source on   ║ APU metric, not RAPL.               ║ 26-08-15 ║
+║ this APU                       ║ InitCpuPowerData() order: hwmon     ║          ║
+║                                ║ (k10temp, zenpower, zenergy,        ║          ║
+║                                ║ apm_xgene) -> APU gpu_metrics ->    ║          ║
+║                                ║ powercap RAPL. Zen 5 k10temp        ║          ║
+║                                ║ exposes no power inputs, so the APU ║          ║
+║                                ║ read wins and energy_uj is never    ║          ║
+║                                ║ consulted — T2-3's decline costs    ║          ║
+║                                ║ the HUD nothing                     ║          ║
+║ MangoHud #1794                 ║ STILL OPEN — cpu_power reads 0 when ║ 26-08-15 ║
+║                                ║ cpu_temp is active, reported on a   ║          ║
+║                                ║ RAPL-sourced Zen 5 desktop. Moot    ║          ║
+║                                ║ for the shipped config: both CPU    ║          ║
+║                                ║ keys are commented (T1-1)           ║          ║
 ║ netdev_budget guidance         ║ Kernel defaults 300 / 2000. The     ║ 26-07-27 ║
 ║ attribution                    ║ 600/4000 pair is RED HAT's (RHEL    ║          ║
 ║                                ║ 8/9/10), NOT ESnet's. ESnet's 100 G ║          ║
@@ -622,7 +738,7 @@ between 2026-08-05 and 2026-08-07.
 ║ loopback ordering              ║ Gentoo's reference ruleset uses the ║          ║
 ║                                ║ profile's order; nftables.org and   ║          ║
 ║                                ║ ArchWiki put loopback first. KEEP   ║          ║
-║ NM vs resolved DNS precedence  ║ systemd #33973 closed-completed —   ║ 26-08-07 ║
+║ NM vs resolved DNS precedence  ║ systemd #33973 closed-completed —   ║ 26-08-15 ║
 ║                                ║ per-link DHCP DNS outranks global   ║          ║
 ║                                ║ DNS=. Domains=~. is NOT the fix     ║          ║
 ║                                ║ (#33579, re-confirmed OPEN). NM     ║          ║
@@ -636,14 +752,16 @@ between 2026-08-05 and 2026-08-07.
 ║                                ║ managed drop-in binds only          ║          ║
 ║                                ║ resolved-routed queries. Low        ║          ║
 ║                                ║ impact, no edit                     ║          ║
-║ MES firmware timeline          ║ 2025-11-19 update -> 2025-12-01     ║ 26-07-27 ║
-║ (gfx1151 hang)                 ║ REVERT -> 2026-02-25 re-land (=0x86)║          ║
-║                                ║ -> 2026-05-07 further update, the   ║          ║
-║                                ║ current head. First tag shipping    ║          ║
-║                                ║ 0x86 = 20260309. 0x7f is the        ║          ║
-║                                ║ lr_compute_wa dmesg gate. Given the ║          ║
-║                                ║ revert precedent, advise "newest    ║          ║
-║                                ║ tag", never a minimum               ║          ║
+║ MES firmware timeline (gfx1151 ║ 2025-11-19 update -> 2025-12-01     ║ 26-08-15 ║
+║ hang)                          ║ REVERT -> 2026-02-25 re-land        ║          ║
+║                                ║ (=0x86) -> 2026-05-07 further       ║          ║
+║                                ║ update, still the head. First tag   ║          ║
+║                                ║ shipping 0x86 = 20260309. 0x7f is   ║          ║
+║                                ║ the lr_compute_wa dmesg gate. UNIT  ║          ║
+║                                ║ VERIFIED 2026-08-14: MES 0x91 / KIQ ║          ║
+║                                ║ 0x75 live. Given the revert         ║          ║
+║                                ║ precedent, advise "newest tag",     ║          ║
+║                                ║ never a minimum                     ║          ║
 ║ POWERDEVIL_NO_DDCUTIL=1        ║ EXACT VARIABLE PowerDevil reads.    ║ 26-07-25 ║
 ║                                ║ Not a silent no-op                  ║          ║
 ║ nmi_watchdog vendor            ║ CachyOS 70-cachyos-settings.conf    ║ 26-07-25 ║
@@ -673,57 +791,51 @@ netdev pairing to ESnet.
 
 ---
 
-## 4. Corrections this rebase makes to the 7.155.0 edition
+## 4. Corrections this rebase makes to the 7.158.0 edition
 
-Binding. Do not re-raise anything this list withdraws. The 7.155.0 edition's own seven
-corrections (the T5 DNS framing, T1-3's closure, the 11-site perf count, sixteen service
-keys, the MiB/MB fix, the empirical verify count, the sysctl-annotation retraction) all still
-stand and are not restated here.
+Binding. Do not re-raise anything this list withdraws. The 7.158.0 edition's own ten
+corrections (T0 returned, the ext4 root, the netdev closure, the retired never-moved claim,
+the zero-delta precedent, T1-2's closure, PLATYPUS over scope, the Tctl answer, the
+anchors-held note, the stale 278) all still stand and are not restated here.
 
-1. **T0 is no longer unrun, and that invalidates every "gated on T0-n, do not decide"
-   sentence in the previous edition.** All eight returned. Five gated items resolved into a
-   shipped change or a recorded maintainer KEEP, one was measuring an inert setting, one is
-   now permanently closed. A recommendation that still describes T0 as unrun is reading a
-   pre-7.156.0 copy.
-2. **T3-3's premise was wrong: the root filesystem is ext4, not Btrfs.** "Largely inert on a
-   Btrfs root" was the framing; on this host `fsck.mode=force` forced a full check on every
-   boot. Shipped as `auto` at 7.158.0. **The inference trap that produced the error is worth
-   keeping:** the fstab rewrite path is ext4-only, which established nothing about the root,
-   and a verify log showing ext4 checks passing does not prove the root is ext4 either. Only
-   `findmnt` on `/` settles it.
-3. **T2-1 was measuring nothing, and the premise behind it does not hold on this host.**
-   Squeezed read 0 on all 32 CPUs across two captures ~2x traffic apart, dropped also 0. Both
-   keys were removed at 7.157.0. Separately, T0-8 found **both 10 GbE links down with wlan0
-   as the default route** — the "dual 10 GbE" justification for the tuning was not describing
-   the deployed configuration.
-4. **"Not one of these 21 oracle values has moved since 7.130.0" is retired.**
-   `MKINITCPIO_COMPRESSION_OPTIONS` moved 2 → 1 at 7.140.0, and `ENV_VARS` 10 → 9 and
-   `SYSCTL_VALUES` 11 → 9 both moved after 7.155.0. What is true and worth carrying: **the
-   four perf scalars have not moved since 7.130.0, twenty-eight releases.**
-5. **A generated body changed with a byte delta of zero** — `mkinitcpio.conf`
-   `COMPRESSION_OPTIONS` `-1` → `-3` (§1a). First instance on record of a change invisible to
-   counts, byte anchors and the Σ total at once.
-6. **T1-2 was closed by the artifact, for the second time in three rebases.** The previous
-   edition's strongest T1/T2 candidate — moving `PROTON_ENABLE_WAYLAND=1` out of the global
-   env file — was resolved by the profile removing the variable. Its upstream reading was
-   correct when written and now describes nothing the profile sets.
-7. **`energy_uj` is mode 400, so T2-3 is not a scope question but a security one.** The
-   previous edition framed the drop-in as "an 18th managed file, weigh it against leaving
-   `cpu_power` degraded". The stronger objection is PLATYPUS: relaxing RAPL permissions
-   re-opens a documented side channel. DECLINED, not merely deferred.
-8. **`k10temp` exposes exactly one labelled sensor.** T0-4 closes the "do not guess the
-   index" caution with an answer: `Tctl` → `temp1_input`, no Tdie and no Tccd on this part.
-   The residual rule is different and permanent: **resolve hwmon by `name`, never by index** —
-   the index is not stable across boots.
-9. **Line anchors did not move this rebase — the first time that has happened.** The script
-   held 4,915 lines and lost 47 bytes to in-place value edits. Every perf global, validator,
-   generator and README perf row is where the 7.155.0 edition put it. **This is a fact about
-   7.158.0, not a new rule.** Anchors moved on four of the previous five rebases, once
-   backwards; always locate the symbol.
-10. **The 278 expected `--verify` OK count is stale and must not be cited.** It was empirical
-    from a clean-host run, and the verify surface has since lost two sysctl keys and one
-    environment variable, each of which is an asserted item. **Re-baseline on the next clean
-    run; treat the figure as UNKNOWN until then.**
+1. **Four of the queue's own items were closed by the artifact, not by this audit** — T1-1
+   (the CPU keys, `<= 7.160.0`), T3-2 (`clearcpuid`, 7.160.0), T4-6 (the stale-drop-in
+   hoist, `<= 7.162.1`) and T4-7 (ICMPv6, 7.159.0). A copy carrying any of them as open is
+   reading a pre-7.159.0 artifact. That makes six artifact-side retirements across five
+   rebases — re-rendering before carrying items forward is now the norm, not a precaution.
+2. **T1-1's sensor framing is superseded, not just shipped.** The `k10temp,temp1_input`
+   pair is real and unused: MangoHud short-circuits CPU temperature to the APU
+   `gpu_metrics` read before any hwmon lookup, and `cpu_power` on this box comes from the
+   APU metric, not RAPL. The 575 B HUD prediction assumed the k10temp text and was wrong —
+   the shipped body is 555 B / 22 L.
+3. **T3-2's "retired to KEEP by maintainer decision" is reversed by the same authority.**
+   The token is gone, the boot is untainted, and the recorded trade converted into a re-add
+   trigger instead of a standing protection. A KEEP-by-decision is not a terminal state.
+4. **§5's "AMD-Vi fully disabled" exposure no longer exists.** The IOMMU is on in
+   passthrough mode. What remains is the pt trade — host-device DMA identity-mapped — a
+   different and smaller exposure, quantified in the rewritten §5 item 1.
+5. **The T4-1 asymmetry inverted.** The fallback no longer "gets IOMMU back but keeps the
+   NPU blacklisted" — the blacklist file is comment-only. Its residual deltas are
+   re-enumerated in T4-1; the old wording describes a config that no longer ships.
+6. **"The ruleset carries no `icmpv6` accept rule" is false since 7.159.0.** T4-7's premise
+   and §5's latent-coupling paragraph are rewritten; the accept is deliberate fallback-entry
+   cover, not dead code, and `_vss_nft` hard-asserts it.
+7. **The expected `--verify` OK count is re-baselined: 266** (188 static + 78 runtime),
+   from the clean post-deploy host run of 2026-08-14 on 7.162.2 — 0 fail / 0 warn /
+   0 gen_fail, exit 0. Still empirical, never a script literal. A ≈268 prediction
+   over-counted by 2 on the unmodeled `_vrkm` branch under `BLACKLIST_AMDXDNA=false`;
+   re-baseline again after any verify-surface change.
+8. **7.162.0 could not run, and the battery that certified it said PASS.**
+   `_ir_validate_counts` still expected `KERNEL_PARAMS:14` after the token change, so all
+   four modes refused rc 3 — fixed at 7.162.1 (two bytes of script), docs synced at
+   7.162.2. The escape and the standing check live in §7a and §9. This brief's own count
+   oracle compares live arrays against §7a's table and would not have caught it either.
+9. **Line anchors moved again, +2 to +4 from the generator block on.** The 7.158.0
+   "anchors held" note was a one-release fact, exactly as it said. Five of the last six
+   rebases moved anchors.
+10. **The determinism-manifest method is replaced.** A sorted per-file `sha256sum` manifest
+    hashed once (`8c6623d5db5f8b23`) — comparable within the method across future rebases;
+    the previous harness-filename-dependent shas are not comparable to it.
 
 ---
 
@@ -731,43 +843,45 @@ stand and are not restated here.
 
 No auto-FIX in this section.
 
-1. **UMIP off** (`clearcpuid=umip`) — descriptor-table base leak, kernel tainted
-   (`TAINT_CPU_OUT_OF_SPEC`), and undocumented upstream while still parsed. Headline open
-   reduction on the evidence; **retired to KEEP by maintainer decision** (T3-2). State the
-   exposure, do not re-propose the removal.
-2. **AMD-Vi fully disabled** (`amd_iommu=off`) — no DMA isolation or remapping; USB4/TB, NVMe
-   and NIC DMA unmediated. Named casualty: the XDNA 2 NPU, blacklisted. Opting back in is one
-   validator-enforced pair (`BLACKLIST_AMDXDNA=false` + `amd_iommu=on iommu=pt`), restoring
-   isolation and the NPU together. The coupling asymmetry is intentional and was re-probed for
-   this edition: `amd_iommu=on` with blacklist true is valid; blacklist false without the
-   IOMMU refuses to deploy with rc 3. **The fallback entry inverts this pairing** (IOMMU on,
-   blacklist still active) — see T4-1.
-3. **DNS: plaintext on the LAN leg only, encrypted and validated beyond the router.** The
+1. **IOMMU on in passthrough mode** (`amd_iommu=on iommu=pt`, since 7.162.0) — the old
+   "AMD-Vi fully disabled" exposure is gone: the IOMMU initializes, interrupt remapping is
+   live, VFIO/SR-IOV are possible, and the XDNA NPU loads. What `pt` trades away: the
+   **default domain is identity**, so DMA from kernel-owned devices (NVMe, NICs, USB4/TB
+   ingress) is not translated or isolated — that is the point of `pt` (near-zero DMA-mapping
+   overhead) and the residual exposure to quantify. Devices handed to VFIO get translated
+   domains regardless. The fallback entry boots the compiled default instead — translated
+   DMA-lazy, more isolation, more overhead (T4-1): the fallback is now the *more* hardened
+   DMA posture, the inverse of the old asymmetry.
+2. **DNS: plaintext on the LAN leg only, encrypted and validated beyond the router.** The
    host↔router hop is plaintext DHCP-supplied DNS with no host-side validation; the
    router↔AdGuard hop is DoT and AdGuard validates DNSSEC. Residual exposure is scoped to the
    LAN segment and to trusting the router's answer — the AD bit is a bit any in-path party
    could set, and nothing on the host checks it. Accepted on file; state the exposure and stop
    (T5, which owns the host-side-DoT prohibition and the foreign-mode qualifier).
-4. **IPv6 disabled + inbound IPv4 ping accepted** — net LAN delta is `+ping −mDNS`. Avahi is
+3. **IPv6 disabled + inbound IPv4 ping accepted** — net LAN delta is `+ping −mDNS`. Avahi is
    masked (unit *and* socket) and resolved has `MulticastDNS=no`, so multicast discovery is
-   fully closed. Ping-accept is an asserted regression guard, not a defect. Latent coupling:
-   `table inet` + `policy drop` covers IPv6, but the ruleset carries **no `icmpv6` accept
-   rule**, so if `ipv6.disable=1` were ever removed, NDP / RA / MLD would be silently dropped
-   and IPv6 would fail with no diagnostic. Nothing enforces the coupling. Inert while IPv6 is
-   off. Tracked as T4-7. LOW.
-5. **`split_lock_detect=off`** — a misbehaving application can degrade the whole system.
-6. **ufw masked rather than removed** — the package stays installed and could be unmasked and
+   fully closed. Ping-accept is an asserted regression guard, not a defect. The former
+   latent coupling is closed: since 7.159.0 the ruleset carries the **ICMPv6 base accept**
+   (T4-7), inert while `ipv6.disable=1` holds and live on the fallback entry, so removing
+   the token no longer silently breaks NDP — the residue is that dual-stack service rules
+   would still need adding by hand, which preflight now WARNs about instead of refusing.
+4. **`split_lock_detect=off`** — a misbehaving application can degrade the whole system.
+5. **ufw masked rather than removed** — the package stays installed and could be unmasked and
    started, at which point two firewall managers contend for the same netfilter tables.
    Quantify that against the benefit (reversibility, no package churn); the nftables-first
    gate (T4-4) is the only thing standing between a mis-sequenced run and an unfirewalled
    window.
-7. **RAPL stays restricted.** `energy_uj` is mode 400 and the permission drop-in is declined
-   (T2-3). This is a posture *win* recorded in the security list so that a future "make
-   `cpu_power` work" request is costed correctly.
-8. **sdboot-manage drop-in override path** — a packaged drop-in can replace `LINUX_OPTIONS`
+6. **sdboot-manage drop-in override path** — a packaged drop-in can replace `LINUX_OPTIONS`
    entirely, and until 7.140.0 nothing looked. Now WARN-only (T4-3 / T4-5).
-9. **No sleep path** — all five sleep/suspend/hibernate targets masked. An always-on box never
+7. **No sleep path** — all five sleep/suspend/hibernate targets masked. An always-on box never
    gets the "locked on resume" checkpoint. Deliberate for a headless-adjacent mini-PC.
+8. **RAPL stays restricted.** `energy_uj` is mode 400 and the permission drop-in is declined
+   (T2-3). A posture *win*, recorded so a future "make `cpu_power` work" request is costed
+   correctly — doubly moot now that MangoHud sources `cpu_power` from the APU metric on this
+   box (§3), so the decline costs the HUD nothing.
+9. **UMIP restored** — `clearcpuid=umip` removed at 7.160.0 (T3-2). The descriptor-table
+   base leak is closed and the kernel is untainted. A posture win; the re-add trigger is on
+   file so the trade never re-litigates from scratch.
 10. **Historical and now confirmed void: the `.ry.orig` dead-code window.** From 7.109.0
     through 7.135.0 the first-adoption preserve never executed, so 13 of 17 destinations were
     overwritten with **no backup of any kind**. Security-relevant members of that set:
@@ -776,7 +890,7 @@ No auto-FIX in this section.
     and T0-7 returned the designed inventory** (4 `.ry.bak` + 2 `.ry.orig`, no user-scope
     `.ry.orig`), so the window is void here. **The generalizable lesson stands and is the
     reason T0-7 existed: presence of a guard in source is not evidence the guard runs.** Any
-    claim of the form "X is protected because the code does Y" needs a behavioural probe.
+    claim of the form "X is protected because the code does Y" needs a behavioral probe.
 
 **Default-deny-inbound ships and is net positive.** Residual notes: `flush ruleset` blast
 radius against docker/libvirt/podman; no ICMP or new-connection rate limit (trusted-LAN
@@ -855,13 +969,15 @@ cat /sys/block/nvme*n*/queue/scheduler                                   # [none
 
 ```fish
 grep -o 'fsck\.mode=[a-z]*' /proc/cmdline             # auto since 7.158.0 — NOT force
-grep -o 'amd_iommu=[^ ]*\|ipv6\.disable=[^ ]*\|clearcpuid=[^ ]*' /proc/cmdline
+grep -o 'amd_iommu=[^ ]*\|iommu=pt\|ipv6\.disable=[^ ]*' /proc/cmdline   # on + pt + 1
+grep -c 'clearcpuid' /proc/cmdline                    # 0 — removed at 7.160.0
 grep -o 'pcie_aspm[^ ]*\|mt7925e[^ ]*' /proc/cmdline
 grep -o 'processor\.max_cstate=[^ ]*\|amd_pstate=[^ ]*' /proc/cmdline
 grep -c 'nowatchdog\|tsc=reliable\|8250' /proc/cmdline    # 0 — the three removals still hold
 grep -c 'preempt=' /proc/cmdline                          # 0 — never pinned
-find /sys/kernel/iommu_groups -mindepth 1 -maxdepth 1 -type d | wc -l   # 0 — INFORMATIONAL
-sudo dmesg | grep -i 'AMD-Vi\|DMAR'                       # expect NO "AMD-Vi: Enabled"
+find /sys/kernel/iommu_groups -mindepth 1 -maxdepth 1 -type d | wc -l   # NON-zero — IOMMU on
+sudo dmesg | grep 'Default domain type'               # Passthrough (set via kernel command line)
+sudo dmesg | grep -i 'AMD-Vi' | head -n 5             # init lines; an "Unknown option" is T3-5
 ```
 
 **Boot chain (includes the 7.158.0 compression change):**
@@ -899,7 +1015,7 @@ iw reg get | grep -i country                                 # US
 ```fish
 sudo nft list chain inet filter input   # policy drop; invalid-drop FIRST, then est/rel, then lo
 sudo nft -c -f /etc/nftables.conf
-grep -c icmpv6 /etc/nftables.conf       # 0 — inert while ipv6.disable=1; see T4-7
+grep -c '^ *icmpv6' /etc/nftables.conf  # 1 — the base accept, shipped 7.159.0 (T4-7 closed)
 systemctl is-enabled ufw.service        # masked — NOT "not installed"
 systemctl is-enabled sleep.target suspend.target hibernate.target \
                      hybrid-sleep.target suspend-then-hibernate.target   # masked x5
@@ -914,7 +1030,8 @@ stat -c '%a %U:%G %n' /etc/NetworkManager/system-connections/*   # 0600 root:roo
 **Userspace / HUD:**
 
 ```fish
-lsmod | grep -c '^amdxdna'                                # 0 — loaded = verify FAIL
+lsmod | grep -c '^amdxdna'                                # >= 1 — the NPU driver loads now
+grep -c '^blacklist' /etc/modprobe.d/60-ry-modules.conf   # 0 — comment-only, BLACKLIST false
 ls /etc/modprobe.d/60-ry-*.conf                           # ONLY 60-ry-modules.conf
 ls -l /dev/ntsync                                         # present (assert-only)
 vulkaninfo | grep -i 'driverName\|deviceName'             # RADV / Radeon 8060S, no ICD pin
@@ -922,8 +1039,9 @@ systemctl --user show-environment | grep 'FSR4_WATERMARK\|MANGOHUD\|POWERDEVIL_N
 systemctl --user show-environment | grep -c 'VKD3D_CONFIG\|PROTON_FSR4_UPGRADE\|PROTON_ENABLE_WAYLAND'
 grep -c '^[A-Z]' ~/.config/environment.d/10-environment.conf   # 9 variables
 grep -c '^cpu_power' ~/.config/MangoHud/MangoHud.conf     # 1
-grep -c '^cpu_temp' ~/.config/MangoHud/MangoHud.conf      # 0 — deliberate (#1794)
-grep -c '^[a-z]' ~/.config/MangoHud/MangoHud.conf         # 19 active directives, 18 after T1-1
+grep -c '^cpu_stats' ~/.config/MangoHud/MangoHud.conf     # 0 — commented since <= 7.160.0 (T1-1)
+grep -c '^cpu_temp' ~/.config/MangoHud/MangoHud.conf      # 0 — deliberate; the sensor is inert
+grep -c '^[a-z]' ~/.config/MangoHud/MangoHud.conf         # 18 active directives
 ```
 
 The `PROTON_ENABLE_WAYLAND` check above expects **0**. A non-zero result on a host that has
@@ -939,32 +1057,41 @@ carries a false-negative bug — re-confirm zero-hit results with `grep` or `pyt
 
 ## 7. Reference data
 
-All values live-evaluated from the 7.158.0 script.
+All values live-evaluated from the 7.162.2 script.
 
 ### 7a. Count oracle — 21 tripwires, asserted by `_ir_validate_counts` (L664)
 
 ```
 ║ KERNEL_PARAMS            15 ║ PKGS_ADD                 16 ║ _RY_BOOT_CRITICAL_DSTS  4 ║
-║ MKINITCPIO_HOOKS         11 ║ PKGS_DEL                  9 ║ _RY_PHASE_NAMES         6 ║
-║ MKINITCPIO_MODULES        1 ║ MASK                     11 ║ _RY_BACKUP_TARGETS      4 ║
-║ MKINITCPIO_COMPRESSION_   1 ║ EXPECTED_VULKAN_PKGS      2 ║ _RY_TMPDIR_GLOBS        6 ║
-║   OPTIONS  (2 pre-7.140)    ║ EXPECTED_SERVICES         5 ║ SYSTEM_DESTINATIONS    15 ║
-║ LOGIND_IGNORE_KEYS        8 ║ _RY_PKG_MANAGED_SERVICES  1 ║ USER_DESTINATIONS       2 ║
-║ ENV_VARS       9 (was 10)   ║ _RY_POST_HOOKS           17 ║ _RY_ARGPARSE_SPEC       6 ║
-║ SYSCTL_VALUES  9 (was 11)   ║                             ║                           ║
+║   (14 at 7.160.0-7.161.0)   ║ PKGS_DEL                  9 ║ _RY_PHASE_NAMES         6 ║
+║ MKINITCPIO_HOOKS         11 ║ MASK                     11 ║ _RY_BACKUP_TARGETS      4 ║
+║ MKINITCPIO_MODULES        1 ║ EXPECTED_VULKAN_PKGS      2 ║ _RY_TMPDIR_GLOBS        6 ║
+║ MKINITCPIO_COMPRESSION_   1 ║ EXPECTED_SERVICES         5 ║ SYSTEM_DESTINATIONS    15 ║
+║   OPTIONS  (2 pre-7.140)    ║ _RY_PKG_MANAGED_SERVICES  1 ║ USER_DESTINATIONS       2 ║
+║ ENV_VARS                  9 ║ _RY_POST_HOOKS           17 ║ _RY_ARGPARSE_SPEC       6 ║
+║ SYSCTL_VALUES             9 ║                             ║                           ║
 ```
 
-**Two values moved this rebase**, the first oracle movement since the 7.140.0 `-T0` cut:
-`ENV_VARS` 10 → 9 (`PROTON_ENABLE_WAYLAND` removed after 7.155.0) and `SYSCTL_VALUES` 11 → 9
-(both `net.core.netdev_budget` keys removed at 7.157.0). `_RY_EPP_LEVELS` (5) and
-`_RY_DPM_LEVELS` (9) are deliberately **not** in the oracle — both are value-bearing, not
-count invariants. `RESOLVED_DNS_SERVERS` was never in the oracle either and was **removed
-outright at 7.147.0**; a brief or script that still expects it is pre-7.147.0. Managed files =
-17 (15 system + 2 user), recomputed at load; a mismatch refuses with exit 3.
-**Count these by live fish eval, never by text parsing.**
+**One value moved twice this window and round-tripped:** `KERNEL_PARAMS` 15 → 14 at 7.160.0
+(`clearcpuid=umip` out) → 15 at 7.162.0 (`iommu=pt` in, `amd_iommu` value flipped).
+`_RY_EPP_LEVELS` (5) and `_RY_DPM_LEVELS` (9) are deliberately **not** in the oracle — both
+are value-bearing, not count invariants. `RESOLVED_DNS_SERVERS` was never in the oracle
+either and was **removed outright at 7.147.0**; a brief or script that still expects it is
+pre-7.147.0. Managed files = 17 (15 system + 2 user), recomputed at load; a mismatch refuses
+with exit 3. **Count these by live fish eval, never by text parsing.**
 
-**The oracle is a weak detector of content change** and this rebase proves it twice over
-(§1a). Byte anchors (§7d) catch some of it; only the embedded bodies (§7e) catch all of it.
+**The tripwire behind this table bit its own release.** `_ir_validate_counts` (L664) runs in
+all four modes via `_init_runtime`, and 7.162.0 shipped with its `KERNEL_PARAMS` literal
+still at 14 — every run refused rc 3 (`count drift: got=15 expected=14`) until 7.162.1
+synced it. The certifying battery missed it because its exit-shadow harness sourced with
+`2>/dev/null`, which swallows `_err_loud` refusals (§9). **Standing check: every array-count
+change diffs the `_ir_validate_counts` literals, and every cert runs that function
+unshadowed with stderr visible** — done for this edition: rc 0, silent, on the extracted
+archive.
+
+**The oracle is a weak detector of content change** — the 7.158.0 rebase proved it twice
+(zero-delta body edit, count-invisible value swap) and this one adds the round-trip class.
+Byte anchors (§7d) catch some of it; only the embedded bodies (§7e) catch all of it.
 
 ### 7b. Perf scalars and their maxima
 
@@ -977,19 +1104,21 @@ outright at 7.147.0**; a brief or script that still expects it is pre-7.147.0. M
 ║ EXPECTED_SCALING_DRIVER ║ 590 ║ amd-pstate-epp ║ NO MAX — verify-only, tunes      ║
 ║                         ║     ║                ║ NOTHING; follows a cmdline       ║
 ║                         ║     ║                ║ amd_pstate= change, never leads  ║
-║ BLACKLIST_AMDXDNA       ║ 591 ║ true           ║ boolean; false REQUIRES          ║
-║                         ║     ║                ║ amd_iommu=on iommu=pt            ║
+║ BLACKLIST_AMDXDNA       ║ 591 ║ false          ║ boolean; false + amd_iommu=off   ║
+║                         ║     ║                ║ is a preflight refusal (rc 3)    ║
 ```
 
-**No line moved from the previous edition.** `_RY_EPP_LEVELS` (L589, same line as
+**No scalar line moved this rebase either** — the header block (L574–L613) held while
+everything from the generators on shifted (§1b). `_RY_EPP_LEVELS` (L589, same line as
 `EPP_PREFERENCE`): `default performance balance_performance balance_power power`.
 `_RY_DPM_LEVELS` (L588, 9 members): `auto low high manual profile_standard profile_min_sclk
 profile_min_mclk profile_peak perf_determinism`. Changing `EXPECTED_SCALING_DRIVER` makes the
 verifier assert a driver the kernel never loaded, producing a false `_chk_eq` failure on
-every `--verify`. Domain validation lives in `_ir_validate_keys` (L692). Re-probed for this
-edition, each in its own subprocess: shipped values rc 0; a bogus DPM level, a bogus EPP, a
+every `--verify`. Domain validation lives in `_ir_validate_keys` (L692). Re-probed at
+7.162.2, each in its own subprocess: shipped values rc 0; a bogus DPM level, a bogus EPP, a
 governor failing the regex, and `BLACKLIST_AMDXDNA=false` under `amd_iommu=off` all exit
-**3** (`EXIT_PREFLIGHT`). `_err_loud` **exits** rather than returns.
+**3** (`EXIT_PREFLIGHT`); the dual-stack case (`ipv6.disable=1` removed) returns **0** with
+the WARN instead (T4-7). `_err_loud` **exits** rather than returns.
 
 **A full perf-value change touches 11 sites. Enumerate all of them in any TUNE.**
 
@@ -999,8 +1128,8 @@ governor failing the regex, and `BLACKLIST_AMDXDNA=false` under `amd_iommu=off` 
 ║ 1  ║ script    ║  585 ║ set -g CPUPOWER_GOVERNOR performance                 ║
 ║ 2  ║ script    ║  587 ║ set -g GPU_DPM_LEVEL high + trailing comment         ║
 ║ 3  ║ script    ║  589 ║ set -g EPP_PREFERENCE performance (+ _RY_EPP_LEVELS) ║
-║ 4  ║ script    ║  865 ║ "# AMD P-State EPP performance (maximum CPPC hint)"  ║
-║ 5  ║ script    ║  867 ║ "# GPU performance level (gfx1151 clock-floor;       ║
+║ 4  ║ script    ║  867 ║ "# AMD P-State EPP performance (maximum CPPC hint)"  ║
+║ 5  ║ script    ║  869 ║ "# GPU performance level (gfx1151 clock-floor;       ║
 ║    ║           ║      ║ forced high)"                                        ║
 ║ 6  ║ README    ║   96 ║ managed-files row: governor (`performance`)          ║
 ║ 7  ║ README    ║   98 ║ managed-files row: NVMe none, P-State EPP, DPM `high`║
@@ -1015,7 +1144,7 @@ governor failing the regex, and `BLACKLIST_AMDXDNA=false` under `amd_iommu=off` 
 ```
 ║ WHAT                        ║ WHERE      ║ WHY IT IS NOT AN EDIT SITE          ║
 ║─────────────────────────────║────────────║─────────────────────────────────────║
-║ udev generator function     ║ script 860 ║ --description reads "Generate       ║
+║ udev generator function     ║ script 862 ║ --description reads "Generate       ║
 ║ header                      ║            ║ content for combined udev perf      ║
 ║                             ║            ║ rules" — no perf value in it. Keep  ║
 ║                             ║            ║ as a LOCATE anchor only             ║
@@ -1026,8 +1155,8 @@ governor failing the regex, and `BLACKLIST_AMDXDNA=false` under `amd_iommu=off` 
 ║                             ║            ║ Notes must not restate values       ║
 ```
 
-**Two sites follow automatically and need no edit:** script L866 and L868 interpolate
-`$EPP_PREFERENCE` and `$GPU_DPM_LEVEL` into the udev rules, and `_vss_udev` (L2258) greps for
+**Two sites follow automatically and need no edit:** script L868 and L870 interpolate
+`$EPP_PREFERENCE` and `$GPU_DPM_LEVEL` into the udev rules, and `_vss_udev` (L2261) greps for
 the interpolated values, so both track any change. Verify by re-rendering the udev body, not
 by reading the lines.
 
@@ -1041,19 +1170,20 @@ all shipped files.
 **Measured deltas from the last perf change** (7.128.0, powersave/auto/balance_performance →
 max): udev 657→639 (−18), cpupower 113→115 (+2); the split was value substitution −6 and
 comment edits −10. A spec revision predicting −6 by omitting the comment edits was wrong.
-**The 17-file total is now 4,858 B** — a re-apply must predict against that figure, not 4,949
-or 5,093, and the udev body itself is unchanged at 639 B. **On a re-apply, use verbatim
+**The 17-file total is now 5,338 B** — a re-apply must predict against that figure, not
+4,858, 4,949 or 5,093, and the udev body itself is unchanged at 639 B. **On a re-apply, use verbatim
 strings — never paraphrase edit wording from memory; the acceptance test is reproducing the
 predicted SHAs, not a passing functional battery.**
 
 ### 7c. Configured values
 
-**KERNEL_PARAMS (15, sorted as emitted, L574):** `amd_iommu=off` `amd_pstate=active`
-`btusb.enable_autosuspend=n` `clearcpuid=umip` **`fsck.mode=auto`** `fsck.repair=yes`
+**KERNEL_PARAMS (15, sorted as emitted, L574):** **`amd_iommu=on`** `amd_pstate=active`
+`btusb.enable_autosuspend=n` `fsck.mode=auto` `fsck.repair=yes` **`iommu=pt`**
 `ipv6.disable=1` `mt7925e.disable_aspm=1` `nvme_core.default_ps_max_latency_us=0`
 `pcie_aspm.policy=performance` `processor.max_cstate=1` `quiet` `split_lock_detect=off`
-`usbcore.autosuspend=-1` `zswap.enabled=0`. **`fsck.mode` changed value at 7.158.0
-(`force` → `auto`); membership and the count of 15 did not change.**
+`usbcore.autosuspend=-1` `zswap.enabled=0`. **Membership changed twice this window:**
+`clearcpuid=umip` out at 7.160.0 (count 14), `amd_iommu=off` → `amd_iommu=on` plus
+`iommu=pt` at 7.162.0 (count back to 15).
 
 Documentation status in mainline `kernel-parameters.txt` — a token being absent is not a
 defect, but it changes which source to cite:
@@ -1062,12 +1192,12 @@ defect, but it changes which source to cite:
 ║ TOKEN                              ║ IN kernel-parameters.txt ║ CITE INSTEAD       ║
 ║────────────────────────────────────║──────────────────────────║────────────────────║
 ║ amd_pstate=                        ║ YES                      ║ —                  ║
-║ amd_iommu=                         ║ YES                      ║ —                  ║
+║ amd_iommu=                         ║ YES; `on` invalid (T3-5) ║ amd/init.c parser  ║
+║ iommu= (the pt half)               ║ YES; pt = passthrough    ║ —                  ║
 ║ processor.max_cstate=              ║ YES                      ║ —                  ║
 ║ split_lock_detect=                 ║ YES                      ║ —                  ║
 ║ usbcore.autosuspend=               ║ YES                      ║ —                  ║
 ║ pcie_aspm= (policy= is a modparam) ║ pcie_aspm= only          ║ pcie/Kconfig       ║
-║ clearcpuid=                        ║ NO — code still parses   ║ arch/x86 source    ║
 ║ fsck.mode= / fsck.repair=          ║ NO — systemd-side        ║ systemd-fsck(8)    ║
 ║ ipv6.disable=                      ║ NO                       ║ networking docs    ║
 ║ zswap.enabled=                     ║ NO                       ║ admin-guide/mm     ║
@@ -1082,7 +1212,7 @@ defect, but it changes which source to cite:
 `VKD3D_SHADER_DEBUG=none` `WINEDEBUG=-all`. **`PROTON_ENABLE_WAYLAND=1` was removed after
 7.155.0**, taking the array 10 → 9 and the body 306 → 282 B; the exact release is not
 recoverable from the shipped artifact (§1c). No drirc, no ttm/amdgpu module params, no ICD
-pin. `_vre_envvars` (L3005) iterates the array dynamically, so the verifier follows any
+pin. `_vre_envvars` (L3009) iterates the array dynamically, so the verifier follows any
 `ENV_VARS` edit with no verifier change — which is why removing a variable needed no verify
 edit and left no trace in the verify surface.
 
@@ -1091,9 +1221,9 @@ edit and left no trace in the verify surface.
 `net.ipv4.tcp_notsent_lowat=16384` `net.ipv4.tcp_slow_start_after_idle=0`
 `vm.compaction_proactiveness=0` `vm.max_map_count=2147483642` `vm.swappiness=150`
 `vm.watermark_boost_factor=0`. Stored `k=v`, emitted `k = v` — any parity check must
-normalise whitespace. **Both `net.core.netdev_budget` keys were removed at 7.157.0** after
+normalize whitespace. **Both `net.core.netdev_budget` keys were removed at 7.157.0** after
 T0-5 measured squeezed at 0; an absent key leaves the kernel default (300 / 2000). Do not
-re-propose them. **Standing correction, do not let it return:** the generator (L848) emits a
+re-propose them. **Standing correction, do not let it return:** the generator (L850) emits a
 99-character header comment and then exactly one `key = value` line per entry. It does not
 annotate individual keys and never did. **Known non-defect:** on a non-initial network
 namespace the `net.core.*` and `net.ipv4.*` keys fail with ENOENT because those tables are
@@ -1126,7 +1256,7 @@ scope for a mini-PC.
 
 **MKINITCPIO:** `MODULES=(amdgpu)` (early KMS); HOOKS (11) base systemd autodetect microcode
 modconf kms keyboard sd-vconsole block filesystems fsck — **byte-identical to Arch mkinitcpio
-41's shipped default**; COMPRESSION zstd, **`COMPRESSION_OPTIONS=(-3)`** since 7.158.0
+41.1's shipped default**; COMPRESSION zstd, **`COMPRESSION_OPTIONS=(-3)`** since 7.158.0
 (L577); explicit `BINARIES=()` / `FILES=()`. `_vmh_order_checks` enforces **eleven** HOOKS
 constraints; a systemd-after-sd-vconsole swap returns **2**, not 1, because that permutation
 breaks two ordered pairs.
@@ -1140,53 +1270,56 @@ Only two reach their destination under their own name (`COUNTRY`; `LOGIND_IGNORE
 `GPU_DPM_LEVEL`→`ATTR{device/power_dpm_force_performance_level}`,
 `CPUPOWER_GOVERNOR`→`GOVERNOR=`, `RESOLVED_MDNS`→`MulticastDNS=`, `RESOLVED_LLMNR`→`LLMNR=`
 and so on — which is why grepping a generated file for the script's variable name returns
-nothing. `EXPECTED_SCALING_DRIVER` writes nothing at all. **The sdboot generator emits
+nothing. `EXPECTED_SCALING_DRIVER` writes nothing at all, and `BLACKLIST_AMDXDNA=false` emits
+nothing either — the modprobe body becomes comment-only (§7e). **The sdboot generator emits
 `REMOVE_EXISTING=` before `OVERWRITE_EXISTING=` while the README table follows declaration
 order; that is deliberate — never "fix" the table to emission order.**
 
 ### 7d. Generated-file byte anchors
 
 ```
-║ FILE                                             ║ 7.155 ║ 7.158 ║ DELTA ║
+║ FILE                                             ║ 7.158 ║ 7.162 ║ DELTA ║
 ║──────────────────────────────────────────────────║───────║───────║───────║
 ║ /boot/loader/loader.conf                         ║    89 ║    89 ║       ║
-║ /etc/kernel/cmdline                              ║   352 ║   351 ║    -1 ║
-║ /etc/sdboot-manage.conf                          ║   544 ║   543 ║    -1 ║
-║ /etc/mkinitcpio.conf                             ║   276 ║   276 ║    0* ║
+║ /etc/kernel/cmdline                              ║   351 ║   343 ║    -8 ║
+║ /etc/sdboot-manage.conf                          ║   543 ║   535 ║    -8 ║
+║ /etc/mkinitcpio.conf                             ║   276 ║   276 ║       ║
 ║ /etc/systemd/resolved.conf.d/99-cachyos-resolved ║    90 ║    90 ║       ║
 ║ /etc/systemd/logind.conf.d/99-cachyos-logind     ║   292 ║   292 ║       ║
 ║ NetworkManager-dispatcher.service.d/logging.conf ║   127 ║   127 ║       ║
 ║ /etc/NetworkManager/conf.d/99-cachyos-nm.conf    ║   148 ║   148 ║       ║
 ║ /etc/iw-regdomain                                ║    88 ║    88 ║       ║
 ║ /etc/bluetooth/main.conf                         ║   147 ║   147 ║       ║
-║ /etc/nftables.conf                               ║   729 ║   729 ║       ║
+║ /etc/nftables.conf                               ║   729 ║ 1,059 ║  +330 ║
 ║ /etc/default/cpupower-service.conf               ║   115 ║   115 ║       ║
-║ /etc/sysctl.d/95-ry-overrides.conf               ║   441 ║   376 ║   -65 ║
+║ /etc/sysctl.d/95-ry-overrides.conf               ║   376 ║   376 ║       ║
 ║ /etc/udev/rules.d/99-ry-perf.rules               ║   639 ║   639 ║       ║
-║ /etc/modprobe.d/60-ry-modules.conf               ║   183 ║   183 ║       ║
-║ ~/.config/environment.d/10-environment.conf      ║   306 ║   282 ║   -24 ║
-║ ~/.config/MangoHud/MangoHud.conf                 ║   383 ║   383 ║       ║
+║ /etc/modprobe.d/60-ry-modules.conf               ║   183 ║   177 ║    -6 ║
+║ ~/.config/environment.d/10-environment.conf      ║   282 ║   282 ║       ║
+║ ~/.config/MangoHud/MangoHud.conf                 ║   383 ║   555 ║  +172 ║
 ║──────────────────────────────────────────────────║───────║───────║───────║
-║ TOTAL (17 managed files)                         ║ 4,949 ║ 4,858 ║   -91 ║
+║ TOTAL (17 managed files)                         ║ 4,858 ║ 5,338 ║  +480 ║
 ```
 
-`0*` marks `/etc/mkinitcpio.conf`: content changed, byte count did not. **A byte-anchor
-table cannot represent that row and this is the reason §7e exists.**
+No row needs the 7.158.0 edition's `0*` marker this time, but its precedent stands:
+`/etc/mkinitcpio.conf` once changed content at a zero byte delta, which no byte-anchor
+table can represent. **That is the reason §7e exists.**
 
-The udev rule at **639 B** and the **4,858 B** total are the anchors for any perf-value
+The udev rule at **639 B** and the **5,338 B** total are the anchors for any perf-value
 change — a value substitution plus its comment edits moves both. None of the five deltas
-above is perf: the udev, cpupower and (post-removal) sysctl bodies that carry every tuned
-value are otherwise byte-identical to the previous edition. **Measure as written files**
+above is perf: the udev, cpupower and sysctl bodies that carry every tuned value are
+byte-identical to the previous edition. **Measure as written files**
 (`$fn > tmp; stat -c %s`), never `string collect` — see §9 for the phantom deficit it
 produces.
 
 ### 7e. Generated bodies — all seventeen, byte-exact
 
-Rendered from the 7.158.0 generators under the §9 harness, 3/3 deterministic
-(sorted-manifest sha `6bf7f8ea53c36c40`). All seventeen were re-rendered for this rebase and
-diffed against the previous edition's fences; **five came back different and are marked
-CHANGED below**, one of them at a byte delta of zero. Reproduce before diffing; do not diff
-against a prior edition's fences without re-rendering — that diff is what caught all five.
+Rendered from the 7.162.2 generators under the §9 harness, 3/3 deterministic — sorted
+per-file manifest sha `8c6623d5db5f8b23` (method in §9; not comparable to prior editions'
+whole-directory shas). All seventeen were re-rendered for this rebase and diffed against the
+7.158.0 fences; **five came back different and are marked CHANGED below**, all five at
+non-zero byte deltas this time. Reproduce before diffing; do not diff against a prior
+edition's fences without re-rendering — that diff is what caught all five.
 
 **`/boot/loader/loader.conf`** (89 B):
 
@@ -1198,19 +1331,20 @@ console-mode keep
 editor no
 ```
 
-**`/etc/kernel/cmdline`** (351 B) — **CHANGED, was 352 B. fsck.mode=force -> auto at 7.158.0.
-The UUID below is a 36-char stub — a real render is the same length**:
+**`/etc/kernel/cmdline`** (343 B) — **CHANGED, was 351 B. clearcpuid=umip out at 7.160.0;
+amd_iommu=off -> amd_iommu=on + iommu=pt at 7.162.0. The UUID below is a 36-char stub — a
+real render is the same length**:
 
 ```
-rw root=UUID=12345678-1234-1234-1234-123456789abc amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=auto fsck.repair=yes ipv6.disable=1 mt7925e.disable_aspm=1 nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off usbcore.autosuspend=-1 zswap.enabled=0
+rw root=UUID=12345678-1234-1234-1234-123456789abc amd_iommu=on amd_pstate=active btusb.enable_autosuspend=n fsck.mode=auto fsck.repair=yes iommu=pt ipv6.disable=1 mt7925e.disable_aspm=1 nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off usbcore.autosuspend=-1 zswap.enabled=0
 ```
 
-**`/etc/sdboot-manage.conf`** (543 B) — **CHANGED, was 544 B. Same fsck.mode token, inside
+**`/etc/sdboot-manage.conf`** (535 B) — **CHANGED, was 543 B. The same token changes, inside
 LINUX_OPTIONS**:
 
 ```
 # sdboot-manage configuration — changes require: sudo sdboot-manage gen && sudo sdboot-manage update
-LINUX_OPTIONS="amd_iommu=off amd_pstate=active btusb.enable_autosuspend=n clearcpuid=umip fsck.mode=auto fsck.repair=yes ipv6.disable=1 mt7925e.disable_aspm=1 nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off usbcore.autosuspend=-1 zswap.enabled=0"
+LINUX_OPTIONS="amd_iommu=on amd_pstate=active btusb.enable_autosuspend=n fsck.mode=auto fsck.repair=yes iommu=pt ipv6.disable=1 mt7925e.disable_aspm=1 nvme_core.default_ps_max_latency_us=0 pcie_aspm.policy=performance processor.max_cstate=1 quiet split_lock_detect=off usbcore.autosuspend=-1 zswap.enabled=0"
 LINUX_FALLBACK_OPTIONS="quiet"
 DEFAULT_ENTRY="manual"
 REMOVE_EXISTING="yes"
@@ -1218,9 +1352,9 @@ OVERWRITE_EXISTING="yes"
 REMOVE_OBSOLETE="yes"
 ```
 
-**`/etc/mkinitcpio.conf`** (276 B) — **CHANGED at ZERO byte delta. COMPRESSION_OPTIONS (-1) ->
-(-3) at 7.158.0: same array length, same token width, same 276 B. No count check and no byte
-check can see this — only this fence**:
+**`/etc/mkinitcpio.conf`** (276 B) — unchanged this rebase; **the zero-delta precedent lives
+here**: COMPRESSION_OPTIONS (-1) -> (-3) at 7.158.0 moved no count and no byte — only this
+fence caught it:
 
 ```
 # mkinitcpio configuration — changes require: sudo mkinitcpio -P && sudo sdboot-manage update
@@ -1297,11 +1431,12 @@ AutoEnable=true
 ReconnectAttempts=3
 ```
 
-**`/etc/nftables.conf`** (729 B):
+**`/etc/nftables.conf`** (1,059 B) — **CHANGED, was 729 B. The ICMPv6 base accept shipped at
+7.159.0 (T4-7), and the header comment now names the fallback-entry rationale**:
 
 ```
 #!/usr/bin/nft -f
-# ry-install: default-deny-inbound, IPv4-only (ufw masked; ipv6.disable=1). Add inbound ports below.
+# ry-install: default-deny-inbound (ufw masked). ICMPv6 is live on the fallback entry. Add inbound ports below.
 flush ruleset
 table inet filter {
     chain input {
@@ -1311,6 +1446,8 @@ table inet filter {
         iif "lo" accept
         # IPv4 ICMP: inbound ping (echo-request) + error/PMTUD types (replies match ct established)
         icmp type { echo-request, destination-unreachable, time-exceeded, parameter-problem } accept
+        # ICMPv6: NDP, MLD, and error/PMTUD types (RFC 4890 host minimum); live on the fallback entry
+        icmpv6 type { echo-request, destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, mld-listener-query } accept
     }
     chain forward { type filter hook forward priority filter; policy drop; }
     chain output { type filter hook output priority filter; policy accept; }
@@ -1324,9 +1461,9 @@ table inet filter {
 GOVERNOR='performance'
 ```
 
-**`/etc/sysctl.d/95-ry-overrides.conf`** (376 B) — **CHANGED, was 441 B. Both
-net.core.netdev_budget keys removed at 7.157.0 after T0-5 measured squeezed at 0. Nine keys,
-one header comment, no per-key annotation**:
+**`/etc/sysctl.d/95-ry-overrides.conf`** (376 B) — unchanged this rebase; both
+`net.core.netdev_budget` keys left at 7.157.0 (T0-5 measured squeezed at 0), recorded at the
+7.158.0 rebase. Nine keys, one header comment, no per-key annotation:
 
 ```
 # ry-install sysctl tunables (priority 95 — loaded after CachyOS vendor 70-cachyos-settings.conf)
@@ -1353,16 +1490,17 @@ ACTION=="add|change", SUBSYSTEM=="cpu", KERNEL=="cpu[0-9]*", ATTR{cpufreq/energy
 ACTION=="add", KERNEL=="card[0-9]*", SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", DRIVERS=="amdgpu", ATTR{device/power_dpm_force_performance_level}="high"
 ```
 
-**`/etc/modprobe.d/60-ry-modules.conf`** (183 B):
+**`/etc/modprobe.d/60-ry-modules.conf`** (177 B) — **CHANGED, was 183 B.
+BLACKLIST_AMDXDNA=false since 7.162.0: comment-only, zero directives**:
 
 ```
 # ry-install: module options + blacklist (managed file, do not edit by hand)
-# blacklist amdxdna: XDNA NPU needs IOMMU, probes -ENODEV (ret -19) under amd_iommu=off
-blacklist amdxdna
+# no directives: BLACKLIST_AMDXDNA=false (NPU path); MT7925 ASPM handled on the kernel command line
 ```
 
-**`~/.config/environment.d/10-environment.conf`** (282 B, mode 0600) — **CHANGED, was 306 B.
-PROTON_ENABLE_WAYLAND=1 removed after 7.155.0, taking ENV_VARS 10 -> 9**:
+**`~/.config/environment.d/10-environment.conf`** (282 B, mode 0600) — unchanged this
+rebase; `PROTON_ENABLE_WAYLAND=1` left after 7.155.0, taking ENV_VARS 10 -> 9 (recorded at
+the 7.158.0 rebase):
 
 ```
 # Environment for systemd --user services and graphical sessions (Plasma, Flatpak, D-Bus apps)
@@ -1377,7 +1515,9 @@ VKD3D_SHADER_DEBUG=none
 WINEDEBUG=-all
 ```
 
-**`~/.config/MangoHud/MangoHud.conf`** (383 B, mode 0600, 19 active directives):
+**`~/.config/MangoHud/MangoHud.conf`** (555 B, mode 0600, 18 active directives + 3 comment
+lines) — **CHANGED, was 383 B. cpu_stats commented and the inert-sensor note added,
+`> 7.158.0` / `<= 7.160.0` (T1-1)**:
 
 ```
 # ry-install: MangoHud readout-only HUD (managed file, do not edit by hand)
@@ -1392,8 +1532,9 @@ gpu_stats
 gpu_temp
 gpu_core_clock
 gpu_power
-cpu_stats
+# cpu_stats intentionally disabled — enable for CPU load in the HUD
 # cpu_temp intentionally disabled — enable if you want CPU temperature in the HUD
+# cpu_custom_temp_sensor is inert here — MangoHud reads apu_cpu_temp from gpu_metrics before any hwmon lookup
 cpu_mhz
 cpu_power
 vram
@@ -1402,6 +1543,7 @@ font_size=20
 text_outline
 background_alpha=0.4
 ```
+
 ### 7f. Removal reconciliation — state the tier for any removal you recommend
 
 ```
@@ -1424,7 +1566,7 @@ background_alpha=0.4
 ```
 
 Tier 2 is reportable but never self-healing and never sets DRIFT — the operator must act by
-hand. Tier 3 is invisible. **The second Tier-3 row is new and this rebase produced it:**
+hand. Tier 3 is invisible. **The second Tier-3 row dates to the 7.158.0 rebase:**
 removing `PROTON_ENABLE_WAYLAND` rewrote `10-environment.conf` correctly, but
 `systemd --user` does not retract a variable it has already imported, so a running session
 keeps it until logout. Nothing detects that and nothing should — but a "why is it still set"
@@ -1433,10 +1575,11 @@ report is a session-lifetime question, not drift.
 ### 7g. Gates, exits, backups
 
 - **Preflight validator chain, four deep, called from `_init_runtime` (L740):**
-  `_ir_validate_counts` (L664, 21 tripwires) → `_ir_validate_keys` (L692, domains and
-  charsets, incl. the nftables↔`ipv6.disable` coupling and the
-  `BLACKLIST_AMDXDNA=false`↔IOMMU-on coupling) → `_ir_validate_sets` (L727) →
-  `_ir_validate_post_hooks` (L4524). All four re-probed at 7.158.0: rc 0 on shipped values.
+  `_ir_validate_counts` (L664, 21 tripwires — the site of the 7.162.0 escape, §7a) →
+  `_ir_validate_keys` (L692, domains and charsets; the nftables↔`ipv6.disable` coupling is
+  now a WARN at L708 and `BLACKLIST_AMDXDNA=false`↔`amd_iommu=off` is a refusal, §7b) →
+  `_ir_validate_sets` (L727) → `_ir_validate_post_hooks` (L4528). All four re-probed at
+  7.162.2 on the extracted archive, unshadowed, stderr visible: rc 0 on shipped values.
   **There is no `_ry_validate_keys`, `_ry_validate_counts` or `_ry_validate_post_hooks`** —
   those names return rc 127, which looks like a signal and is only an unknown command. Real
   sibling validators: `_ry_validate_mkinitcpio_hooks`, `_ry_validate_mkinitcpio_modules`,
@@ -1448,7 +1591,7 @@ report is a session-lifetime question, not drift.
   shadowed by the second, which is a forward guard rather than a defect. A fourth
   (`EXPECTED_VULKAN_PKGS ∩ PKGS_DEL`) is deliberately uncovered and currently empty. **Any
   recommendation that adds a package or unit must be checked against all three — a
-  contradiction is a hard deploy refusal, not a silent misbehaviour.**
+  contradiction is a hard deploy refusal, not a silent misbehavior.**
 - **Phases (6, `_RY_PHASE_NAMES`):** Preflight → Packages → Configuration →
   Services (fstab → resolved → pkg-remove → mask → enable → regdom) → Boot → Finalize,
   mirrored 1:1 across the array, `_progress`, the orchestrator, the log headers and the
@@ -1460,28 +1603,29 @@ report is a session-lifetime question, not drift.
   `NO_COLOR` (plus multiplexer detection). Every profile toggle is an embedded scalar set
   unconditionally with `set -g`, so an exported env var of the same name is clobbered —
   opting in means editing the script. `NO_COLOR` needs a **non-empty** value to fire;
-  `TERM=dumb` disables colour independently. `RY_RUN_TIMEOUT=0` disables the timeout; package
+  `TERM=dumb` disables color independently. `RY_RUN_TIMEOUT=0` disables the timeout; package
   and boot operations floor at 7200 s (`_RY_LONGOP_HARD_CAP`).
-- **Dependencies:** 37 hard-required commands (missing any → rc 1) at L1535 + **15**
-  warn-only optional tools at L1544, plus a `df --output` probe and systemd ≥ 250. Optional
-  list: bootctl journalctl modinfo pgrep zcat tput lsmod modprobe pkill nmcli ping realpath ip
-  lspci kill. Profile-installed tools (`nft`, `pactree`, `paccache`, `sysctl`, `udevadm`,
-  `bluetoothctl`, `timedatectl`, `ufw`, `iw`) are call-site `command -q` guarded and
-  deliberately undeclared — do not "fix" the asymmetry. **INFO, open (consistency only):
-  `readlink` is the only invoked external with neither a dep-list entry nor a `command -q`
-  guard.** It is coreutils and effectively unreachable; record it, do not escalate it.
+- **Dependencies:** 37 hard-required commands (missing any → rc 1) at L1538 + **16**
+  warn-only optional tools at L1547, plus a `df --output` probe and systemd ≥ 250. Optional
+  list: bootctl journalctl modinfo pgrep zcat tput lsmod modprobe pkill nmcli ping realpath
+  readlink ip lspci kill. Profile-installed tools (`nft`, `pactree`, `paccache`, `sysctl`,
+  `udevadm`, `bluetoothctl`, `timedatectl`, `ufw`, `iw`) are call-site `command -q` guarded
+  and deliberately undeclared — do not "fix" the asymmetry. **CLOSED: `readlink` joined the
+  optional probe in this window** (`> 7.158.0`, `<= 7.162.1`), retiring the previous
+  edition's one dep-list inconsistency.
 - **Exit model, 14 constants:** 0 OK · 1 FAIL · 2 USAGE · 3 PREFLIGHT · 4 BOOT_CRIT ·
   5 LOCK · 10 DRIFT; internal sentinels 11 GEN_NOFN, 12 GEN_NOUUID, 13 GEN_SYSCTL,
   14 GEN_ENVD, 250 AS_MISUSE, 251 RUN_TMPFAIL, 255 RUN_MISUSE — function returns only, never
   a process exit. Signals map to 128+N. **No orphan class reaches EXIT_DRIFT.** Root
   `--check` → rc 3, silent, no JSONL (the root guard precedes LOG_DIR init); all other root
   modes → rc 2, loud, 92 B. Lock dir `$HOME/ry-install/.lock` with a `pid` file inside;
-  `--verify` and `--check` are lock-free. The systemd 250 floor is a hard refusal at L1541 and
+  `--verify` and `--check` are lock-free. The systemd 250 floor is a hard refusal at L1545 and
   the fish 3.6 floor at L156 — both preflight, both loud.
-- **The expected live `--verify` OK count is UNKNOWN at 7.158.0.** The previous edition's
-  **278** was empirical from a clean-host run and is now stale: the verify surface lost two
-  asserted sysctl keys and one asserted environment variable. Re-baseline on the next clean
-  run. It was never a literal in the script and must never be cited as an invariant.
+- **The expected live `--verify` OK count is 266 at 7.162.2** — 188 static + 78 runtime,
+  from the clean post-deploy host run of 2026-08-14 (0 fail / 0 warn / 0 gen_fail, exit 0).
+  Empirical, never a script literal: the 7.155.0 edition's 278 died when the verify surface
+  shrank, and a ≈268 prediction for this run over-counted by 2 on the `_vrkm` branch under
+  `BLACKLIST_AMDXDNA=false`. Re-baseline after any verify-surface change.
 - **JSONL logs land under `$HOME/ry-install/logs/<YYYY-MM-DD>/<mode>-<timestamp>-<pid>.jsonl`**,
   not in the profile root. A glob that misses the `logs/<date>/` level returns zero hits
   silently, which reads as "the key was never emitted".
@@ -1492,7 +1636,7 @@ report is a session-lifetime question, not drift.
   version); `-h`/`-v` are honored before the root guard. `--install` is **not** a flag —
   install is the default no-arg mode, and fish's wgetopt abbreviation resolves `--install` to
   `--install-file` while rejecting `--ver` as ambiguous. That is documented fish default
-  behaviour; `-S` would break the 3.6 floor.
+  behavior; `-S` would break the 3.6 floor.
 - **Backups are two different guarantees.** The 4 boot-critical destinations
   (`/boot/loader/loader.conf`, `/etc/kernel/cmdline`, `/etc/sdboot-manage.conf`,
   `/etc/mkinitcpio.conf` — `_RY_BACKUP_TARGETS` and `_RY_BOOT_CRITICAL_DSTS` are the same
@@ -1511,70 +1655,76 @@ report is a session-lifetime question, not drift.
 
 **62 verify functions = 12 `_verify_*` + 50 subs** (`_vsb` 7 · `_vss` 10 · `_vsp` 3 ·
 `_vsc` 1 · `_vrk` 4 · `_vrkm` 3 · `_vrsv` 10 · `_vre` 5 · `_vrs` 4 · `_vpd` 1 · `_vmh` 2).
-The census is **identical prefix-by-prefix to 7.155.0 and 7.141.0** — no verify function was
-added, removed or renamed across three rebases. **Every line number below is also unchanged
-from the previous edition**, because the script held its line count. A recommendation that
-changes a value must state which **sub** asserts it, and whether that sub hard-fails or warns.
+The census is **identical prefix-by-prefix to 7.158.0, 7.155.0 and 7.141.0** — no verify
+function was added, removed or renamed across four rebases, even as asserts kept landing
+*inside* existing subs (this window: the `icmpv6` grep, the full cpufreq uniformity sweep,
+per-entry loader-token asserts, the resolved unit-file check, root-FS logging). **Every line
+number below moved +3 to +4 from the previous edition.** A recommendation that changes a
+value must state which **sub** asserts it, and whether that sub hard-fails or warns.
 
 ```
 ║ ORCHESTRATOR             ║ SUBS THAT MATTER FOR TUNING FINDINGS             ║
 ║──────────────────────────║──────────────────────────────────────────────────║
-║ _verify_static_boot      ║ _vsb_loader (2079) · _vsb_sdboot (2084) ·        ║
-║ (2228)                   ║ _vsb_sdboot_dropins (2116; WARN) ·               ║
-║                          ║ _vsb_cmdline (2130, all 15 tokens + root= + rw) ·║
-║                          ║ _vsb_mkinitcpio (2157; live COMPRESSION/_OPTIONS,║
-║                          ║ multi-line join, last-wins) · _vsb_entries (2201)║
-║                          ║ -> _vsb_entry_options (2184)                     ║
-║ _verify_static_system    ║ _vss_logind (2231) · _vss_nmdispatch (2237) ·    ║
-║ (2280)                   ║ _vss_nm (2238) · _vss_sysctl (2244, NOW 9 keys) ·║
-║                          ║ _vss_regdom (2250) · _vss_bluetooth (2251) ·     ║
-║                          ║ _vss_udev (2258; 3 rules, EPP + DPM aware) ·     ║
-║                          ║ _vss_modprobe (2271; blacklist + stale-dropin    ║
-║                          ║ sweep, WARN) · _vss_nft (2266; HARD-FAILS on a   ║
-║                          ║ missing echo-request accept)                     ║
-║ _verify_static_user      ║ inline: ENV_VARS (NOW 9) + MangoHud directives   ║
-║ (2303)                   ║                                                  ║
-║ _verify_static_packages  ║ _vsp_required (2315; PKGS_ADD 16 + Vulkan 2) ·   ║
-║ (2380)                   ║ _vsp_removed (2338) · _vsp_pacman_conf (2348)    ║
-║ _verify_static_services  ║ MASK 11 inline + _vss_orphan_masks (2414; INFO,  ║
-║ (2390)                   ║ admin-scope /etc + /run only)                    ║
+║ _verify_static_boot      ║ _vsb_loader (2082) · _vsb_sdboot (2087) ·        ║
+║ (2231)                   ║ _vsb_sdboot_dropins (2119; WARN) · _vsb_cmdline  ║
+║                          ║ (2133, all 15 tokens + root= + rw) ·             ║
+║                          ║ _vsb_mkinitcpio (2160; live                      ║
+║                          ║ COMPRESSION/_OPTIONS, multi-line join,           ║
+║                          ║ last-wins) · _vsb_entries (2204) ->              ║
+║                          ║ _vsb_entry_options (2187)                        ║
+║ _verify_static_system    ║ _vss_logind (2234) · _vss_nmdispatch (2240) ·    ║
+║ (2284)                   ║ _vss_nm (2241) · _vss_sysctl (2247, 9 keys) ·    ║
+║                          ║ _vss_regdom (2253) · _vss_bluetooth (2254) ·     ║
+║                          ║ _vss_udev (2261; 3 rules, EPP + DPM aware) ·     ║
+║                          ║ _vss_modprobe (2275; blacklist + stale-dropin    ║
+║                          ║ sweep, WARN) · _vss_nft (2269; HARD-FAILS on a   ║
+║                          ║ missing echo-request or icmpv6-type accept)      ║
+║ _verify_static_user      ║ inline: ENV_VARS (9) + MangoHud directives       ║
+║ (2307)                   ║                                                  ║
+║ _verify_static_packages  ║ _vsp_required (2319; PKGS_ADD 16 + Vulkan 2) ·   ║
+║ (2384)                   ║ _vsp_removed (2342) · _vsp_pacman_conf (2352)    ║
+║ _verify_static_services  ║ MASK 11 inline + _vss_orphan_masks (2418; INFO,  ║
+║ (2394)                   ║ admin-scope /etc + /run only)                    ║
 ║ _verify_static_syntax    ║ live mkinitcpio HOOKS presence, multi-line       ║
-║ (2421)                   ║ tolerated                                        ║
-║ _verify_static_checksum  ║ _vsc_check_one (2435; expected vs installed      ║
-║ (2464)                   ║ SHA256 per destination)                          ║
-║ _verify_runtime_kparams  ║ _vrk_cmdline (2638; every token + rw) ·          ║
-║ (2806)                   ║ _vrk_gpu_state (2657; QUOTED compare vs          ║
-║                          ║ $GPU_DPM_LEVEL) · _vrk_cpu_state (2679; cpu0     ║
+║ (2425)                   ║ tolerated                                        ║
+║ _verify_static_checksum  ║ _vsc_check_one (2439; expected vs installed      ║
+║ (2468)                   ║ SHA256 per destination)                          ║
+║ _verify_runtime_kparams  ║ _vrk_cmdline (2642; every token + rw) ·          ║
+║ (2810)                   ║ _vrk_gpu_state (2661; QUOTED compare vs          ║
+║                          ║ $GPU_DPM_LEVEL) · _vrk_cpu_state (2683; cpu0     ║
 ║                          ║ detail + FULL cpufreq-policy uniformity sweep) · ║
-║                          ║ _vrk_module_state (2781) -> _vrkm_amdgpu (2724), ║
-║                          ║ _vrkm_blacklist (2744), _vrkm_blacklist_modprobe ║
-║                          ║ (2760; amdxdna LOADED = FAIL)                    ║
-║ _verify_runtime_services ║ _vrsv_sys_units (2889) -> _vrsv_chk_active_      ║
-║ (3002)                   ║ enabled (2809), _vrsv_chk_nftables (2832; judged ║
+║                          ║ _vrk_module_state (2785) -> _vrkm_amdgpu (2728), ║
+║                          ║ _vrkm_blacklist (2748), _vrkm_blacklist_modprobe ║
+║                          ║ (2764; content-sourced — a comment-only body     ║
+║                          ║ yields zero entries and an early return)         ║
+║ _verify_runtime_services ║ _vrsv_sys_units (2893) -> _vrsv_chk_active_      ║
+║ (3006)                   ║ enabled (2813), _vrsv_chk_nftables (2836; judged ║
 ║                          ║ by live policy-drop, not unit state),            ║
-║                          ║ _vrsv_chk_resolved (2862; enabled|static),       ║
-║                          ║ _vrsv_chk_cpupower_governor (2874) ·             ║
-║                          ║ _vrsv_nft_assert_ping (2824; WARN) ·             ║
-║                          ║ _vrsv_wifi (2927) -> _vrsv_wifi_nm_backend (2906)║
-║                          ║ · _vrsv_masked_inactive (2967; iterates $MASK) · ║
-║                          ║ _vrsv_user_units (2985)                          ║
-║ _verify_runtime_env      ║ _vre_envvars (3005; dynamic over $ENV_VARS) ·    ║
-║ (3111)                   ║ _vre_sysctl_runtime (3023; NOW 9, absent-vs-     ║
+║                          ║ _vrsv_chk_resolved (2866; enabled|static +       ║
+║                          ║ unit-file state), _vrsv_chk_cpupower_governor    ║
+║                          ║ (2878) · _vrsv_nft_assert_ping (2828; WARN) ·    ║
+║                          ║ _vrsv_wifi (2931) -> _vrsv_wifi_nm_backend       ║
+║                          ║ (2910) · _vrsv_masked_inactive (2971; iterates   ║
+║                          ║ $MASK) · _vrsv_user_units (2989)                 ║
+║ _verify_runtime_env      ║ _vre_envvars (3009; dynamic over $ENV_VARS) ·    ║
+║ (3115)                   ║ _vre_sysctl_runtime (3027; 9 keys, absent-vs-    ║
 ║                          ║ unreadable split, WARNs on an absent knob) ·     ║
-║                          ║ _vre_fstab (3041; every ext4 entry) ·            ║
-║                          ║ _vre_ntsync (3072) · _vre_regdom (3094)          ║
-║ _verify_runtime_session  ║ _vrs_nm_perms (3114) · _vrs_installed_file_perms ║
-║ (3221)                   ║ (3140) -> _vrs_vfat_skip (3129) ·                ║
-║                          ║ _vrs_parent_dirs (3187) -> _vpd_dir_perm_check   ║
-║                          ║ (3168)                                           ║
-║ _verify_summary (1168)   ║ pass/fail/warn tally — not an assertion path     ║
+║                          ║ _vre_fstab (3045; every ext4 entry; logs the     ║
+║                          ║ root-FS type) · _vre_ntsync (3076) · _vre_regdom ║
+║                          ║ (3098)                                           ║
+║ _verify_runtime_session  ║ _vrs_nm_perms (3118) · _vrs_installed_file_perms ║
+║ (3225)                   ║ (3144) -> _vrs_vfat_skip (3133) ·                ║
+║                          ║ _vrs_parent_dirs (3191) -> _vpd_dir_perm_check   ║
+║                          ║ (3172)                                           ║
+║ _verify_summary (1171)   ║ pass/fail/warn tally — not an assertion path     ║
 ```
 
-**Three assertion counts fell without a single verify-function edit.** `_vss_sysctl` and
-`_vre_sysctl_runtime` went 11 keys → 9 and `_verify_static_user` / `_vre_envvars` went 10
-variables → 9, purely because every one of them iterates the profile array rather than
-carrying a literal list. That is the design working — and it is also why the empirical
-`--verify` OK count moved and why no diff of the verify functions would have shown it.
+**The assertion surface keeps moving with zero census movement.** At 7.158.0 three
+assertion counts fell with no verify-function edit (the sysctl and env verifiers iterate the
+profile arrays); in this window asserts were *added* the same way — the `icmpv6` grep inside
+`_vss_nft`, the cpufreq uniformity sweep inside `_vrk_cpu_state`, the per-entry token assert
+under `_vsb_entries`. That is the design working — and it is why the empirical `--verify` OK
+count moved both times and why no function-list diff would have shown either.
 
 **`_vre_fstab` is the reason the root-filesystem question was answerable at all, and also the
 reason it went unanswered for so long.** It enumerates every ext4 entry with a per-entry
@@ -1589,8 +1739,9 @@ actually uses — that is T0-8, and it is a read, not an assert.
 **Attribution traps:**
 
 - `_vrkm_blacklist_modprobe` is **generator-sourced** — it checks intended content, not
-  on-disk extras. Attribute the drop-in sweep to `_vss_modprobe` / `_ry_stale_ry_dropins`
-  (L2559), never to it.
+  on-disk extras, and with the 7.162.0 comment-only body it finds zero blacklist entries and
+  returns early: **an amdxdna load is now expected and unasserted.** Attribute the drop-in
+  sweep to `_vss_modprobe` / `_ry_stale_ry_dropins` (L2563), never to it.
 - `_vrsv_masked_inactive` asserts every *declared* mask is present and inactive. The reverse
   direction (masked units not declared) is `_vss_orphan_masks`, which lives on the **static**
   services path. Do not conflate the two.
@@ -1598,21 +1749,22 @@ actually uses — that is T0-8, and it is a read, not an assert.
   `*-fallback.conf` by design, which is why T4-1 is invisible to verify.
 - `_vss_nft` hard-fails on a missing inbound echo-request accept; `_vrsv_nft_assert_ping` only
   warns. A recommendation to drop inbound ping must address the hard-fail.
-- `_ry_orphan_masked_units` (L2563) filters to **admin scope only** (`/etc`, `/run`) — vendor
+- `_ry_orphan_masked_units` (L2567) filters to **admin scope only** (`/etc`, `/run`) — vendor
   `/usr/lib` masks and `Alias=` cascades are deliberately dropped. `Alias=` matters here:
   masking `avahi-daemon.service` makes its upstream alias read masked too.
 - **Removed asserts — do NOT verify:** `_vrkm_iommu`, `_vrk_clocksource`, `_vre_zram`,
   `_vre_tcp` (all gone since 7.90.0); kernel-floor and Mesa-floor checks; the preemption
-  advisory (7.139.0 r2). No THP, KSM, `ttm.*`, drirc, `iommu=pt`, ICMPv6/NDP or baloo assert
-  exists. No `VKD3D_CONFIG`, `PROTON_ENABLE_WAYLAND` or `netdev_budget` assert exists — all
-  three left their arrays and the dynamic verifiers followed automatically.
+  advisory (7.139.0 r2). No THP, KSM, `ttm.*`, drirc or baloo assert exists. No
+  `VKD3D_CONFIG`, `PROTON_ENABLE_WAYLAND` or `netdev_budget` assert exists — all three left
+  their arrays and the dynamic verifiers followed automatically. (`iommu=pt` and ICMPv6,
+  formerly on this list, ARE asserted now — as a cmdline token and via `_vss_nft`.)
 - **Sandbox artifact, not a regression:** `_ry_validate_mkinitcpio_hooks` returns rc 1 and
   `_ry_validate_configs` returns rc 3 in a container because `/etc/mkinitcpio.conf` is absent;
   `_vmh_order_checks` must be called directly to test HOOKS ordering. Always A/B a nonzero
   validator rc against the previous release.
 
 **Output-channel invariant — reconciled; do not re-file as drift.** Every leveled user-facing
-message funnels through `_msg_print` (**L1087**), honouring QUIET / `_RY_OUTPUT_BROKEN` /
+message funnels through `_msg_print` (**L1090**), honoring QUIET / `_RY_OUTPUT_BROKEN` /
 `_RY_NO_COLOR` / isatty(2). Raw `>&2` counts of ~78 (whole-file) and ~43 (inside function
 bodies) are **both correct under their own scoping**; the remainder are top-level pre-init
 preflight writes made before `_msg_print` is defined. The invariant means "single authority
@@ -1625,12 +1777,11 @@ false finding every time. stdout carries only `--help` and `--version`.
 
 Recorded so the next rebase does not re-pay these costs.
 
-- **Harness.** Cut the script just before the `# ── MAIN: ARGPARSE` banner — **L4786 at both
-  7.155.0 and 7.158.0**, L4861 at 7.141.0, L4845 at 7.139.0, L4834 at 7.135.1. **This is the
-  first rebase where the anchor did not move; that is a fact about 7.158.0, not a licence to
-  hardcode it.** Always locate the banner. Then delete the L3 source guard and `source` the
+- **Harness.** Cut the script just before the `# ── MAIN: ARGPARSE` banner — **L4790 at
+  7.162.2**; L4786 at 7.155.0 and 7.158.0, L4861 at 7.141.0, L4845 at 7.139.0, L4834 at
+  7.135.1. Always locate the banner. Then delete the L3 source guard and `source` the
   result as a non-root user with a **writable `$HOME`**:
-  `sed -n '1,4785p' ry-install.fish | sed '3d' > harness.fish`. Without the L3 deletion the
+  `sed -n '1,4789p' ry-install.fish | sed '3d' > harness.fish`. Without the L3 deletion the
   guard fires on `source` and every count silently reads 0. Without a writable `$HOME` the
   log-directory init aborts the source part-way and counts read 0 the same way — a different
   cause with an identical symptom. Pre-create `$HOME/.config/fish` and
@@ -1641,9 +1792,17 @@ Recorded so the next rebase does not re-pay these costs.
   generators then probe in ONE shell. TRAP: that flow calls `_ry_erase_handlers`, which
   `functions -e`'s `_cleanup*` and `_progress_on_winch`, so the live function table
   UNDER-COUNTS handler families — take the census from `^function ` at column 0 in source
-  (**294** at 7.141.0, 7.155.0 and 7.158.0), not from a before/after `functions --all --names`
+  (**294** at 7.141.0, 7.155.0, 7.158.0 and 7.162.2), not from a before/after
+  `functions --all --names`
   diff. A second count trap: `grep -oP '^function \K[A-Za-z0-9_]+'` reports **293**, because
   it truncates `_content_*` names at their first dot. Use `[^ ;]+`.
+- **Source with stderr visible, and run `_ir_validate_counts` unshadowed in every cert.**
+  Sourcing the harness with `2>/dev/null` swallows `_err_loud` refusals — exactly how the
+  7.162.0 tripwire escape shipped certified (§7a). Independently, WARN/INFO text is
+  invisible in the harness even with stderr open: `QUIET` is pinned `true` pre-argparse
+  (L104) and flipped only in MAIN (L4845), which the cut removes — `_msg` still logs and
+  counts, but `_msg_print` suppresses. Assert warn-branches by rc and by the JSONL, never by
+  watching for text.
 - **`test -w /tmp` bails rc 3 before anything else.** Any sandbox reproduction needs a non-root
   user *and* a writable `/tmp` (`chmod 1777 /tmp`), with probe scripts world-readable.
 - **Array counts by live fish eval, never text parsing.** `eval echo \$$name` collapses a fish
@@ -1654,7 +1813,7 @@ Recorded so the next rebase does not re-pay these costs.
   preserving order, and strip trailing `;`.
 - **Filter generators to `_content__*` + `_content_HOME*`** via
   `string match -qr '^_content_(_|HOME)'`. A bare `_content_*` glob also catches the
-  `_content_fn_for` dispatcher (L921) and returns 18. Fish function names contain dots
+  `_content_fn_for` dispatcher (L924) and returns 18. Fish function names contain dots
   (`_content_HOME_.config_MangoHud_MangoHud.conf`), so a `[A-Za-z0-9_-]*` charset truncates
   them and fabricates duplicates — match `\S+` after `function`.
 - **Set `_ROOT_UUID`** (single underscore, not `_RY_ROOT_UUID`) with any 36-char valid-shape
@@ -1663,20 +1822,22 @@ Recorded so the next rebase does not re-pay these costs.
   exactly.
 - **Generated bytes must be measured as WRITTEN FILES** (`$fn > tmp; stat -c %s`), never
   `(cmd | string collect)` — collect strips each trailing newline and the 17-file total reads
-  4,841 B instead of 4,858 B, a phantom deficit that looks like anchor drift. `string length`
+  5,321 B instead of 5,338 B, a phantom deficit that looks like anchor drift. `string length`
   counts characters and under-reports for the same reason.
-- **Determinism must be compared per-file by content hash, or with a SORTED manifest.** A
-  concatenated hash over the output directory is not comparable between passes because the
-  glob order depends on harness filenames. The manifest sha changes between editions even when
-  every body is identical — `03b0863baa9fcde2` at 7.155.0, `6bf7f8ea53c36c40` here. That is
-  expected, not drift.
+- **Determinism must be compared per-file by content hash, or with a SORTED per-file
+  manifest** — this edition: `sha256sum` over the name-sorted per-generator `sha256sum` list
+  = `8c6623d5db5f8b23`, comparable across future rebases that use the same method. The old
+  whole-directory shas (`03b0863baa9fcde2` at 7.155.0, `6bf7f8ea53c36c40` at 7.158.0) were
+  harness-filename dependent and are method-incompatible with it. A sha change across
+  methods is expected, not drift.
 - **Verify every "before" column against the OLD EDITION'S RENDERED BODY, not memory.** The old
   script is not in the archive; only its brief is. A drift row asserting a change that never
   happened passes every count check and every byte check — only an old-vs-new body diff catches
   it. Extract the previous edition's fences with a **toggle-based** fence walker; a naive
-  `re.findall` on triple-backticks consumes alternating pairs and under-reports. **The walker
-  earned its keep for the third consecutive rebase**, and this time it caught something nothing
-  else could: `mkinitcpio.conf` changed content at **zero byte delta and zero count delta**.
+  `re.findall` on triple-backticks consumes alternating pairs and under-reports. **The walker has
+  earned its keep on four consecutive rebases**: at the 7.158.0 one it caught what nothing
+  else could — `mkinitcpio.conf` changed content at **zero byte delta and zero count delta** —
+  and this rebase it caught all five changed bodies, two of them behind a round-tripped count.
   Two extraction gotchas worth reusing: the walker inherits the *last seen* bold label, so
   fences following the final body are mis-attributed to it (harmless — take the first fence per
   label, and do not read the extras as an 18th body); and the cmdline fence will always
@@ -1698,6 +1859,9 @@ Recorded so the next rebase does not re-pay these costs.
   twice with an identical script hash, 7.140.0 shipped nine times with only two distinct script
   hashes. Read the `VERSION` line plus a structural count, then confirm with the
   zip/README/CHANGELOG hash. **All 8-hex anchors are `sha256sum | cut -c1-8`, not CRC-32.**
+  A GitHub `main` archive (git-archive zip, topdir `<repo>-main`, no mode bits) can be
+  member-identical to a release — hash the members, not just the zip, and re-apply 0755 to
+  the script on repack (§0).
 - **Sandbox limits.** Target host paths do not exist, so only sudo-fail and preflight paths are
   exercisable and a full install cannot complete by design. `_err_loud` **exits** rather than
   returns — run each negative test in its own subprocess. Useful shims: a 3-line `sudo` wrapper
@@ -1731,20 +1895,22 @@ and T1-3 have both moved there permanently.
    incorrect, superseded, deprecated, or harmful values.
 2. Rate IMPACT × RISK (High/Med/Low). Default KEEP when impact is marginal and risk is
    non-trivial.
-3. Never invent params, flags, keys, options, or URLs. Cite a source or mark UNCERTAIN. One
-   UNCERTAIN is already on the record and must not be resolved by guessing: the exact release
-   that dropped `PROTON_ENABLE_WAYLAND` (§1c).
+3. Never invent params, flags, keys, options, or URLs. Cite a source or mark UNCERTAIN.
+   Three UNCERTAINs are already on the record and must not be resolved by guessing: the
+   exact releases that dropped `PROTON_ENABLE_WAYLAND`, that commented the MangoHud CPU
+   keys, and that hoisted the `--check` drop-in sweep (§1c).
 4. Flag every source conflict and name the trusted side. The netdev-budget conflict (Red Hat
    vs ESnet) is preserved in §3 even though the keys are gone, because it is the reason the
    measurement gate existed. The live conflict that remains is nftables rule order (Gentoo vs
    nftables.org/ArchWiki). Do not resolve it silently.
 5. Give exact versions (kernel / Mesa / linux-firmware / proton-cachyos / package) and exact
    before→after, mapped to the in-script global.
-6. **Do not carry values forward from any pre-7.158.0 edition.** A recommendation that
+6. **Do not carry values forward from any pre-7.162.2 edition.** A recommendation that
    re-derives a removed token, or that asserts a *perf* value changed in the 7.130.0 →
-   7.158.0 window, is a stale-source error rather than a finding. The converse binds equally:
-   DNS, the FSR4 variables, `PROTON_ENABLE_WAYLAND`, both netdev keys, `fsck.mode` and
-   `COMPRESSION_OPTIONS` **did** change in this window.
+   7.162.2 window, is a stale-source error rather than a finding. The converse binds
+   equally: DNS, the FSR4 variables, `PROTON_ENABLE_WAYLAND`, both netdev keys, `fsck.mode`,
+   `COMPRESSION_OPTIONS`, `clearcpuid`, the IOMMU pair, the ICMPv6 accept, the MangoHud CPU
+   keys and `BLACKLIST_AMDXDNA` **did** change in this window.
 7. **A gate that has returned is not an action.** All eight T0 items are answered; citing one
    as "unrun" or gating a recommendation on it is a stale-source error.
 8. A question closed by a code change is closed. A question closed by upstream evidence (§3)
@@ -1770,27 +1936,28 @@ and T1-3 have both moved there permanently.
 
 ## Sources
 
-**Primary, re-accessed 2026-08-07:** git.kernel.org torvalds/linux `Makefile` (7.2.0-rc6) ·
-github.com CachyOS/linux-cachyos PKGBUILD (7.1.6-1) · gitlab.freedesktop.org mesa/mesa
-`VERSION` (26.3.0-devel) · github.com CachyOS/proton-cachyos releases (11.0-20260703) ·
-github.com flightlessmango/MangoHud issue #1794 (open) · github.com systemd/systemd issue
-#33579 (open).
-
-**Primary, accessed 2026-08-05 and unchanged since:**
-`Documentation/admin-guide/kernel-parameters.txt`, `drivers/pci/pcie/Kconfig`,
-`drivers/cpufreq/amd-pstate.c`, `drivers/cpufreq/Kconfig.x86`,
-`drivers/net/wireless/mediatek/mt76/mt7925/pci.c`,
-`drivers/net/ethernet/realtek/r8169_main.c` · git.kernel.org linux-firmware
-`amdgpu/gc_11_5_1_mes_2.bin` history · CachyOS/linux-cachyos config
+**Primary, re-accessed 2026-08-15:** git.kernel.org torvalds/linux `Makefile` (7.2.0-rc7) ·
+github.com CachyOS/linux-cachyos PKGBUILD (7.1.8-1) and config
 (`X86_AMD_PSTATE_DEFAULT_MODE=3`, `PCIEASPM_DEFAULT=y`, `PCIEASPM_PERFORMANCE` not set,
-`NTSYNC=m`) · mesa `docs/envvars.rst` · Proton-EM `em-10` docs (`FSR4.md`,
-`EM-ADDITIONS.md`) · docs.redhat.com RHEL 8/9/10 network performance tuning ·
-fasterdata.es.net 100 G "Other Tuning" · wiki.gentoo.org Nftables/Examples · wiki.nftables.org
-quick reference · wiki.archlinux.org Nftables.
+`NTSYNC=m`, `DRM_ACCEL_AMDXDNA=m`, `IOMMU_DEFAULT_DMA_LAZY=y`, `ZSWAP_DEFAULT_ON=y`) ·
+gitlab.freedesktop.org mesa/mesa `VERSION` (26.3.0-devel) · github.com CachyOS/proton-cachyos
+releases (11.0-20260703) · github.com flightlessmango/MangoHud issue #1794 (open) and master
+`src/cpu.cpp` · github.com systemd/systemd issue #33579 (open) ·
+`Documentation/admin-guide/kernel-parameters.txt` · `drivers/cpufreq/amd-pstate.c` ·
+`drivers/iommu/amd/init.c` · `arch/x86/kernel/pci-dma.c` · `drivers/iommu/iommu.c` ·
+git.kernel.org linux-firmware `amdgpu/gc_11_5_1_mes_2.bin` history.
+
+**Primary, accessed 2026-08-05 and unchanged since:** `drivers/pci/pcie/Kconfig`,
+`drivers/cpufreq/Kconfig.x86`, `drivers/net/wireless/mediatek/mt76/mt7925/pci.c`,
+`drivers/net/ethernet/realtek/r8169_main.c` · mesa `docs/envvars.rst` · Proton-EM `em-10`
+docs (`FSR4.md`, `EM-ADDITIONS.md`) · docs.redhat.com RHEL 8/9/10 network performance
+tuning · fasterdata.es.net 100 G "Other Tuning" · wiki.gentoo.org Nftables/Examples ·
+wiki.nftables.org quick reference · wiki.archlinux.org Nftables.
 
 **Live host measurements (T0-1 … T0-8), captured on the deployed GTR9 Pro** and recorded in
-§2. These are observations of one machine, not upstream claims; re-measure rather than cite
-them for a different host.
+§2, plus the 2026-08-14 post-deploy captures (verify 266 OK, MES 0x91 / KIQ 0x75, untainted
+boot, amdxdna loading). These are observations of one machine, not upstream claims;
+re-measure rather than cite them for a different host.
 
 **Standing reference:** docs.kernel.org (PCIe/ASPM, amd-pstate, sysctl/vm, sysctl/kernel,
 networking, block, ext4, UMIP, AMD-Vi, accel/amdxdna, amdgpu

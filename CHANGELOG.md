@@ -4,6 +4,46 @@ Changes for cachyos-tuning-audit
 Newest first. Versions track the pinned ry-install.fish release.
 
 
+7.162.2
+-------
+
+  - docs: re-pin 7.158.0 -> 7.162.2 (4919 lines, 294 functions,
+    sha256 9ff2fae0; release zip d81475e6; harness cut L4790)
+  - docs: audited from the GitHub main zip 153d75b3; members are
+    byte-identical to the release, mode bits absent by form
+  - surface: no perf value changed, now thirty-two releases (7.130.0
+    -> 7.162.2). All four perf scalars identical
+  - surface: KERNEL_PARAMS moved 15 -> 14 -> 15; clearcpuid=umip out
+    at 7.160.0, amd_iommu=on plus iommu=pt in at 7.162.0
+  - surface: five generated bodies changed; 17-file total 4,858 ->
+    5,338 B; nftables 729 -> 1,059 B with the ICMPv6 base accept
+  - surface: MangoHud body 383 -> 555 B, cpu_stats commented with an
+    inert-sensor note; modprobe 183 -> 177 B, comment-only
+  - gates: verify OK count re-baselined at 266 (188 static + 78
+    runtime) from the clean host run of 2026-08-14
+  - gates: MES read returned; the unit reports MES 0x91 / KIQ 0x75,
+    past the 0x86 gfx1151 hang fix. A2 stays the one open read
+  - scope: T1-1, T3-2, T4-6 and T4-7 closed by the artifact between
+    7.159.0 and 7.162.1; the queue has no open change item
+  - scope: add T3-5; amd_iommu=on is not a parsed value, iommu=pt is
+    the load-bearing half, and the cost is one boot notice
+  - errata: 7.162.0 shipped with the count tripwire unsynced and
+    refused every run at rc 3; certify validators unshadowed
+  - errata: T1-1's sensor pair is inert on this APU; MangoHud reads
+    apu_cpu_temp from gpu_metrics before any hwmon lookup
+  - errata: the AMD-Vi-disabled exposure is gone; the residual is the
+    passthrough identity-domain trade, and fallback inverts it
+  - errata: line anchors moved +2 to +4; five of the last six rebases
+    moved them. Always locate the symbol
+  - research: re-fix upstream 2026-08-15; mainline 7.2.0-rc7,
+    linux-cachyos 7.1.8-1, Mesa 26.3.0-devel, proton 20260703
+  - research: MangoHud #1794 and systemd #33579 both still open
+  - research: read amd/init.c, pci-dma.c, iommu.c and MangoHud
+    src/cpu.cpp; three new settled rows come from them
+  - structure: determinism manifest is now a sorted per-file sha list
+    hashed once (8c6623d5db5f8b23); older shas are incomparable
+
+
 7.158.0
 -------
 
