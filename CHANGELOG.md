@@ -4,6 +4,74 @@ Changes for cachyos-tuning-audit
 Newest first. Versions track the pinned ry-install.fish release.
 
 
+7.163.0 r2
+----------
+
+  - docs: re-verify the same 7.163.0 archive; zip c890a83b and all
+    seventeen rendered bodies byte-identical to r1, sigma 5,393 B
+  - docs: no value in the brief moved, so r2 is a content revision
+    against an unchanged pin, not a re-pin
+  - scope: section 3 grows 17 -> 20 candidates; add G-18 frame cap
+    under the 85 W wall, G-19 per-app drirc, G-20 sg_display
+  - scope: add section 3e, a shortlist ordered by effort against
+    return; the protected list moves to 3f
+  - scope: record that MANGOHUD=1 does not reach a game running
+    inside gamescope, which silently voids an A/B run
+  - research: dxvk.conf ships dxgi.maxFrameRate and d3d9.maxFrame
+    Rate; amdgpu.sg_display is int 0444, -1 auto and 0 disable
+  - research: no WINE_FULLSCREEN_FSR claim is made; the Proton
+    README fetched this pass does not document it
+  - structure: second prose pass; tier items, the settled cells,
+    the gates list and the traps list all cut, no value removed
+  - structure: non-section-3 material is down about a fifth from
+    the 7.162.2 edition across r1 and r2
+
+
+7.163.0
+-------
+
+  - docs: re-pin 7.162.2 -> 7.163.0 (4919 lines, 294 functions,
+    sha256 1f2a1bae; main zip c890a83b; harness cut L4790, held)
+  - docs: no release zip was supplied; only the GitHub main archive
+    is anchored, and its members carry no mode bits
+  - surface: no perf value changed, now thirty-three releases
+    (7.130.0 -> 7.163.0). All four perf scalars identical
+  - surface: ENV_VARS 9 -> 10 with GSK_RENDERER=ngl; the GTK4 Vulkan
+    renderer aborts on gfx1151
+  - surface: two generated bodies changed; 17-file total 5,338 ->
+    5,393 B
+  - surface: 99-cachyos-nm.conf 148 -> 186 B, a new [main] section
+    carrying autoconnect-retries-default=0
+  - surface: 10-environment.conf 282 -> 299 B; every other body is
+    byte-identical and was re-rendered to prove it
+  - gates: verify OK count 268 (189 static + 79 runtime) from the
+    clean host run of 2026-08-16, exactly +2 for the new variable
+  - gates: _ir_validate_counts carried ENV_VARS:10; the standing
+    check from the 7.162.0 escape passed its first exercise
+  - scope: add section 3, a standing gaming and performance
+    candidate surface, 17 gated levers ranked by frametime effect
+  - scope: section 3 covers the 85 W ceiling, the GTT/VRAM budget,
+    zram sysctls, mitigations, Mesa levers, gamescope and pinning
+  - scope: add T2-6; autoconnect-retries-default=0 is deployed but
+    unasserted by _vss_nm, the first managed value with no verifier
+  - scope: reopen T3-5 as a FIX candidate; the host logs AMD-Vi
+    Unknown option for amd_iommu=on, so the token is inert
+  - errata: verify tests token presence, never efficacy, on all
+    three KERNEL_PARAMS surfaces; a rejected token passes clean
+  - errata: FSR4_WATERMARK=1 is verification, not a tuning value,
+    and is not evidence FSR4 helps on gfx1151
+  - research: read ttm_tt.c, amdgpu_drv.c, mesa envvars, the amdgpu
+    thermal docs and the ArchWiki zram recipe for section 3
+  - research: mesa VERSION returned 504 twice and is carried
+    forward, not re-derived; upstream otherwise re-fixed 2026-08-16
+  - structure: line numbers removed throughout; they moved on five
+    of the last six rebases and were never load-bearing
+  - structure: trim; closed items collapse into one roster in 1b
+    instead of repeating as tier entries
+  - structure: determinism manifest d9b5b3f3e4bea768, same sorted
+    per-file method as the previous edition
+
+
 7.162.2
 -------
 
